@@ -8,7 +8,7 @@ const MAX_STEPS = 3
 const searchInput = jsonSchema<{ query: string }>({
   type: 'object',
   properties: {
-    query: { type: 'string', minLength: 1, maxLength: 500, description: 'Pergunta completa sobre o produto, com o assunto relevante do histórico.' },
+    query: { type: 'string', minLength: 1, maxLength: 500, description: 'Consulta autossuficiente sobre o problema atual, incluindo o que a última resposta confirmou ou negou. Use termos específicos; omita o nome do produto e palavras genéricas que não ajudam a localizar o artigo.' },
   },
   required: ['query'],
   additionalProperties: false,
@@ -45,7 +45,7 @@ export async function generateNoraResponse(options: {
     instructions: instructionsFor(),
     tools: {
       searchKnowledge: tool({
-        description: 'Consulta artigos publicados do produto. Reescreva a dúvida com o contexto relevante antes de buscar. Use para fundamentar orientações e fatos sobre o produto; não é necessária para conversa social ou pedidos de esclarecimento.',
+        description: 'Consulta artigos publicados do produto. Use assim que identificar uma dúvida ou dificuldade com o produto, antes de responder ou fazer perguntas de triagem. Reescreva a dúvida com o contexto da última mensagem. Não é necessária para conversa social.',
         inputSchema: searchInput,
         execute: async ({ query }) => {
           // Also cap execution if a provider returns several tool calls in one step.
@@ -68,8 +68,10 @@ export async function generateNoraResponse(options: {
       if (searchError) throw searchError
       if (stepNumber >= MAX_STEPS - 1 || searches >= MAX_SEARCHES) return { toolChoice: 'none' }
     },
-    maxOutputTokens: 400,
-    providerOptions: { groq: { reasoningEffort: 'low', parallelToolCalls: false } },
+    // Leave room for contextual interpretation and tool selection in reasoning models.
+    maxOutputTokens: 1200,
+    temperature: 0,
+    providerOptions: { groq: { reasoningEffort: 'medium', parallelToolCalls: false } },
   })
 
   const result = await agent.generate({ messages: options.messages, abortSignal: AbortSignal.timeout(20000) })
