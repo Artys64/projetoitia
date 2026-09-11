@@ -1,0 +1,7 @@
+:host { all: initial !important; display: contents !important; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button { all: unset; box-sizing: border-box; position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); right: max(20px, env(safe-area-inset-right)); z-index: 2147483000; padding: 17px 23px; border-radius: 32px; background: #182a45; color: #fff; font: 600 15px/1.4 system-ui, sans-serif; cursor: pointer; box-shadow: 0 6px 28px #15284130; }
+button:focus-visible { outline: 3px solid #4d8bf5; outline-offset: 4px; }
+iframe { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(88px, calc(env(safe-area-inset-bottom) + 76px)); width: min(390px, calc(100vw - 32px)); height: min(620px, calc(100dvh - 110px - env(safe-area-inset-bottom) - env(safe-area-inset-top))); border: 1px solid #dce3ed; border-radius: 20px; box-shadow: 0 16px 64px #142b4933; z-index: 2147483001; background: #fff; }
+@media (max-width: 420px) { iframe { right: max(8px, env(safe-area-inset-right)); width: calc(100vw - 16px - env(safe-area-inset-right)); bottom: max(80px, calc(env(safe-area-inset-bottom) + 72px)); height: calc(100dvh - 96px - env(safe-area-inset-bottom) - env(safe-area-inset-top)); } }

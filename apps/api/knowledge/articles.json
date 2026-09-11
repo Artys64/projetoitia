@@ -1,0 +1,52 @@
+[
+  {
+    "id": "redefinir-senha",
+    "companyId": "support-hub",
+    "version": 1,
+    "status": "published",
+    "title": "Redefinir a senha",
+    "keywords": ["senha", "acesso", "login", "entrar", "esqueci"],
+    "content": "Para redefinir sua senha, acesse a tela de login e selecione “Esqueci minha senha”. Enviaremos um link válido por 30 minutos para o e-mail cadastrado.",
+    "suggestions": ["Não recebi o e-mail", "Falar com uma pessoa"]
+  },
+  {
+    "id": "email-nao-recebido",
+    "companyId": "support-hub",
+    "version": 1,
+    "status": "published",
+    "title": "Não recebi o e-mail",
+    "keywords": ["email", "e-mail", "spam", "promocoes", "recebi"],
+    "content": "Confira as pastas de spam e promoções e confirme se digitou o mesmo e-mail usado no cadastro. Se o link não chegar em até 5 minutos, procure nossa equipe de atendimento.",
+    "suggestions": ["Falar com uma pessoa", "Voltar ao início"]
+  },
+  {
+    "id": "planos",
+    "companyId": "support-hub",
+    "version": 1,
+    "status": "published",
+    "title": "Conhecer os planos",
+    "keywords": ["plano", "preco", "valor", "vendas", "equipe pequena", "custo", "custa"],
+    "content": "Temos planos para equipes de diferentes tamanhos. O valor depende do número de atendentes e do volume mensal de conversas. Esta base não informa preços; consulte a equipe de vendas para obter uma proposta.",
+    "suggestions": ["Sou uma equipe pequena", "Quero falar com vendas"]
+  },
+  {
+    "id": "instalar-widget",
+    "companyId": "support-hub",
+    "version": 1,
+    "status": "published",
+    "title": "Instalação do widget e integração por API",
+    "keywords": ["integracao", "instalacao", "instalar", "widget", "api", "script", "site"],
+    "content": "A instalação é feita com um pequeno script no seu site. Também oferecemos integração por API para experiências personalizadas.",
+    "suggestions": ["Ver instalação do widget", "Falar com uma pessoa"]
+  },
+  {
+    "id": "horario-atendimento",
+    "companyId": "support-hub",
+    "version": 1,
+    "status": "published",
+    "title": "Horário de atendimento humano",
+    "keywords": ["horario", "atendimento", "humano", "pessoa", "atendente", "funciona"],
+    "content": "Nossa equipe atende de segunda a sexta, das 8h às 18h, no horário de Brasília. O tempo médio de resposta é de até 15 minutos no horário comercial. Esta demonstração ainda não registra pedidos de atendimento humano.",
+    "suggestions": ["Voltar ao início", "Continuar com a assistente"]
+  }
+]

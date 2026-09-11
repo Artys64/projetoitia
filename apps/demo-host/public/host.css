@@ -1,0 +1,25 @@
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; font-family: system-ui, sans-serif; color: #243e4a; background: #faf8f2; }
+header, main, footer { max-width: 1040px; margin: auto; padding: 28px 32px; }
+header { display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; align-items: center; border-bottom: 1px solid #d8ddd6; }
+nav { display: flex; flex-wrap: wrap; gap: 20px; }
+a { color: #345f4b; text-underline-offset: 5px; }
+.brand { font-weight: 800; letter-spacing: -.04em; font-size: 22px; }
+.hero { padding: 64px 0 40px; max-width: 670px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: 11px; font-weight: 700; }
+h1 { font-size: clamp(36px, 6vw, 64px); letter-spacing: -.05em; line-height: 1.06; margin: 20px 0; }
+p { line-height: 1.7; }
+.hero p { font-size: 18px; }
+button { padding: 13px 20px; border: 1px solid #345f4b; border-radius: 6px; background: #345f4b; color: white; font: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #ad6c25; outline-offset: 4px; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; }
+.card { border-top: 1px solid #d8ddd6; padding: 32px 0; }
+form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+label { display: flex; flex-direction: column; gap: 8px; }
+input { padding: 13px; border: 1px solid #9bac9f; border-radius: 6px; font: inherit; max-width: 100%; }
+#events { font-family: ui-monospace, monospace; font-size: 12px; min-height: 24px; }
+#more { margin-top: 45vh; padding-bottom: 120px; }
+footer { border-top: 1px solid #d8ddd6; font-size: 12px; }
+@media (max-width: 400px) { header, main, footer { padding-left: 20px; padding-right: 20px; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
