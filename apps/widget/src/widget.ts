@@ -3,7 +3,7 @@ import { mountNavigation } from './navigation'
 import { connectParent } from './parent-channel'
 import { renderShell } from './shell'
 
-export function mountWidget(root: HTMLElement, config: PublicInstallation, hostWindow: Window) {
+export function mountWidget(root: HTMLElement, config: PublicInstallation, widgetWindow: Window) {
   const { region, closeButton, navigationButtons } = renderShell(root, config.name)
   const unmountNavigation = mountNavigation({
     root,
@@ -12,7 +12,7 @@ export function mountWidget(root: HTMLElement, config: PublicInstallation, hostW
     greeting: config.greeting,
   })
 
-  const channel = connectParent(hostWindow, {
+  const channel = connectParent(widgetWindow, {
     installationId: config.installationId,
     allowedOrigins: config.allowedOrigins,
     onOpen: () => region.focus(),
@@ -30,14 +30,14 @@ export function mountWidget(root: HTMLElement, config: PublicInstallation, hostW
   }
 
   closeButton.addEventListener('click', channel.dismiss)
-  hostWindow.addEventListener('keydown', handleKeydown)
+  widgetWindow.addEventListener('keydown', handleKeydown)
 
   return {
     destroy() {
       unmountNavigation()
       channel.destroy()
       closeButton.removeEventListener('click', channel.dismiss)
-      hostWindow.removeEventListener('keydown', handleKeydown)
+      widgetWindow.removeEventListener('keydown', handleKeydown)
     },
   }
 }

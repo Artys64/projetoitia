@@ -11,15 +11,15 @@ type ParentSession = {
 }
 
 // O canal cuida do protocolo e da sessão; os callbacks cuidam da interface.
-export function connectParent(hostWindow: Window, options: ParentChannelOptions) {
+export function connectParent(widgetWindow: Window, options: ParentChannelOptions) {
   const { installationId, allowedOrigins, onOpen, onDismiss } = options
   let session: ParentSession | null = null
   let opened = false
 
   function handleMessage(event: MessageEvent<unknown>): void {
     if (
-      hostWindow.parent === hostWindow ||
-      event.source !== hostWindow.parent ||
+      widgetWindow.parent === widgetWindow ||
+      event.source !== widgetWindow.parent ||
       !allowedOrigins.includes(event.origin) ||
       !isEnvelope(event.data)
     ) {
@@ -37,7 +37,7 @@ export function connectParent(hostWindow: Window, options: ParentChannelOptions)
       }
 
       session = { origin: event.origin, instanceId: message.instanceId }
-      hostWindow.parent.postMessage(
+      widgetWindow.parent.postMessage(
         envelope('ready', session.instanceId, message.requestId, { installationId }),
         session.origin,
       )
@@ -56,14 +56,14 @@ export function connectParent(hostWindow: Window, options: ParentChannelOptions)
       case 'open':
         opened = true
         onOpen()
-        hostWindow.parent.postMessage(
+        widgetWindow.parent.postMessage(
           envelope('opened', session.instanceId, message.requestId, {}),
           session.origin,
         )
         break
       case 'close':
         opened = false
-        hostWindow.parent.postMessage(
+        widgetWindow.parent.postMessage(
           envelope('closed', session.instanceId, message.requestId, { reason: 'command' }),
           session.origin,
         )
@@ -76,16 +76,16 @@ export function connectParent(hostWindow: Window, options: ParentChannelOptions)
 
     opened = false
     onDismiss()
-    hostWindow.parent.postMessage(
-      envelope('closed', session.instanceId, hostWindow.crypto.randomUUID(), { reason: 'dismiss' }),
+    widgetWindow.parent.postMessage(
+      envelope('closed', session.instanceId, widgetWindow.crypto.randomUUID(), { reason: 'dismiss' }),
       session.origin,
     )
   }
 
-  hostWindow.addEventListener('message', handleMessage)
+  widgetWindow.addEventListener('message', handleMessage)
 
   return {
     dismiss,
-    destroy: () => hostWindow.removeEventListener('message', handleMessage),
+    destroy: () => widgetWindow.removeEventListener('message', handleMessage),
   }
 }
