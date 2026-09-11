@@ -1,10 +1,11 @@
 import { registerEmbed, type EmbedOptions } from './embed.js'
 import { groq } from '@ai-sdk/groq'
-import { generateText, type LanguageModel } from 'ai'
+import type { LanguageModel } from 'ai'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { loadArticles } from './knowledge/repository.js'
-import { createTextSearch, normalize, retrievalQuery, type KnowledgeSearch } from './knowledge/search.js'
-import { buildContext, instructionsFor, PROMPT_VERSION } from './knowledge/context.js'
+import { createTextSearch, retrievalQuery, type KnowledgeSearch } from './knowledge/search.js'
+import { buildContext, PROMPT_VERSION } from './knowledge/context.js'
+import { generateNoraResponse, KnowledgeSearchError } from './agents/nora.js'
 
 type BuildAppOptions = EmbedOptions & {
   logger?: boolean
@@ -21,23 +22,6 @@ type ChatMessage = { role: 'user' | 'assistant'; content: string }
 const fallback: ChatAnswer = {
   reply: 'Ainda não encontrei uma resposta segura para essa dúvida. Você pode reformular a pergunta ou consultar uma pessoa da equipe.',
   suggestions: ['Falar com uma pessoa', 'Voltar ao início'],
-}
-
-function conversationalAnswer(message: string): ChatAnswer | null {
-  const text = normalize(message).trim().replace(/[.!?]+$/g, '').trim()
-  if (/^(oi|ola|bom dia|boa tarde|boa noite|voltar ao inicio|continuar com a assistente)$/.test(text)) {
-    return {
-      reply: 'Olá! Posso ajudar com acesso à conta, planos e integrações usando nossa base de conhecimento.',
-      suggestions: ['Esqueci minha senha', 'Conhecer os planos', 'Falar com uma pessoa'],
-    }
-  }
-  if (/^(?:quero )?(?:falar com (?:uma pessoa|um humano|um atendente|a equipe)|deixar uma mensagem)$/.test(text)) {
-    return {
-      reply: 'Esta demonstração ainda não encaminha conversas para atendimento humano. Você pode continuar consultando a base de conhecimento por aqui.',
-      suggestions: ['Horário de atendimento', 'Continuar com a assistente'],
-    }
-  }
-  return null
 }
 
 function parseMessages(body: ChatRequestBody): ChatMessage[] | null {
@@ -84,45 +68,37 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     if (!lastUserMessage) {
       return reply.code(400).send({ error: 'A conversa precisa de uma mensagem do usuário.' })
     }
-    const conversational = conversationalAnswer(lastUserMessage.content)
-    if (conversational) return conversational
-
-    let retrieved: ReturnType<typeof buildContext>
-    try {
-      retrieved = buildContext(await search(retrievalQuery(messages), companyId))
-    } catch (error) {
-      request.log.error({ error }, 'Falha ao consultar a base de conhecimento')
-      return reply.code(503).send({ error: 'A base de conhecimento está temporariamente indisponível. Tente novamente.' })
-    }
-    const { context, sources } = retrieved
-    const metadata = {
-      companyId, promptVersion: PROMPT_VERSION,
-      sources: sources.map(source => ({ articleId: source.articleId, version: source.version, chunk: source.chunk })),
-    }
-    const first = sources[0]
-    if (!first) {
-      request.log.info({ ...metadata, outcome: 'no_context' }, 'Consulta de conhecimento concluída')
-      return fallback
-    }
-    const suggestions = first.suggestions.length ? first.suggestions : fallback.suggestions
+    const metadata = { companyId, promptVersion: PROMPT_VERSION }
     if (options.useLlm === false || (!options.languageModel && !process.env.GROQ_API_KEY)) {
-      request.log.info({ ...metadata, outcome: 'excerpt' }, 'Consulta de conhecimento concluída')
-      return { reply: first.text, suggestions }
+      try {
+        const { sources } = buildContext(await search(retrievalQuery(messages), companyId))
+        const first = sources[0]
+        request.log.info({
+          ...metadata, sources: sources.map(({ articleId, version, chunk }) => ({ articleId, version, chunk })),
+          outcome: first ? 'excerpt' : 'no_context',
+        }, 'Consulta local de conhecimento concluída')
+        return first ? { reply: first.text, suggestions: first.suggestions.length ? first.suggestions : fallback.suggestions } : fallback
+      } catch (error) {
+        request.log.error({ error }, 'Falha ao consultar a base de conhecimento')
+        return reply.code(503).send({ error: 'A base de conhecimento está temporariamente indisponível. Tente novamente.' })
+      }
     }
 
     const model = options.languageModel ?? groq(process.env.GROQ_MODEL?.trim() || 'openai/gpt-oss-20b')
     try {
-      const result = await generateText({
-        model,
-        instructions: instructionsFor(context),
-        messages,
-        maxOutputTokens: 400,
-        abortSignal: AbortSignal.timeout(20000),
-        providerOptions: { groq: { reasoningEffort: 'low' } },
-      })
-      request.log.info({ ...metadata, model: result.response.modelId, usage: result.usage, outcome: result.text.trim() ? 'generated' : 'empty' }, 'Resposta RAG concluída')
+      const result = await generateNoraResponse({ model, messages, search, companyId })
+      request.log.info({
+        ...metadata, model: result.model, usage: result.usage, searches: result.searches, steps: result.steps,
+        sources: result.sources.map(({ articleId, version, chunk }) => ({ articleId, version, chunk })),
+        outcome: result.text.trim() ? 'generated' : 'empty',
+      }, 'Resposta RAG concluída')
+      const suggestions = result.sources[0]?.suggestions ?? []
       return result.text.trim() ? { reply: result.text, suggestions } : fallback
     } catch (error) {
+      if (error instanceof KnowledgeSearchError) {
+        request.log.error({ error, ...metadata }, 'Falha ao consultar a base de conhecimento')
+        return reply.code(503).send({ error: 'A base de conhecimento está temporariamente indisponível. Tente novamente.' })
+      }
       request.log.error({ error, ...metadata }, 'Falha ao gerar resposta com a Groq')
       return reply.code(502).send({ error: 'A assistente de IA está temporariamente indisponível. Tente novamente.' })
     }

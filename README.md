@@ -39,18 +39,18 @@ Copie `apps/api/.env.example` para `apps/api/.env` caso queira alterar a porta o
 
 ## Testar com a Groq
 
-O chatbot busca artigos publicados antes de responder. Sem chave, mostra o primeiro trecho encontrado; com a Groq, gera a resposta usando os trechos recuperados. Para ativar o GPT-OSS 20B pela Groq:
+Com a Groq, a Nora interpreta o histórico e decide se responde diretamente, pede esclarecimento ou consulta artigos publicados pela ferramenta `searchKnowledge`. Sem chave, funciona apenas como busca textual e mostra o primeiro trecho encontrado. Para ativar o GPT-OSS 20B pela Groq:
 
 1. Crie uma chave no [GroqCloud Console](https://console.groq.com/keys).
 2. Copie `apps/api/.env.example` para `apps/api/.env.local`.
 3. Preencha `GROQ_API_KEY` no arquivo `.env.local`.
 4. Reinicie `npm run dev`.
 
-O modelo padrão é `openai/gpt-oss-20b`. Para usar outro modelo disponível na Groq, altere `GROQ_MODEL`. Mantenha a chave somente no backend e não a envie para o repositório.
+O modelo padrão é `openai/gpt-oss-20b`. Para usar outro modelo disponível na Groq, altere `GROQ_MODEL`; ele precisa suportar chamadas de ferramentas. Mantenha a chave somente no backend e não a envie para o repositório.
 
 No Free Plan, a Groq atualmente informa para esse modelo os limites de 30 requests/minuto, 1.000 requests/dia, 8.000 tokens/minuto e 200.000 tokens/dia. Os limites são compartilhados pela organização e podem mudar; confira sempre a [página oficial de limites](https://console.groq.com/docs/rate-limits) e os valores exibidos na sua conta.
 
-## RAG inicial: base local
+## RAG conversacional com base local
 
 A base fica em `apps/api/knowledge/articles.json`. Edite esse arquivo e reinicie a API para aplicar alterações. Para usar outro arquivo, configure `KNOWLEDGE_FILE` com um caminho absoluto em `apps/api/.env.local`. Arquivo inválido impede a inicialização, em vez de usar silenciosamente outra base.
 
@@ -71,13 +71,17 @@ Cada artigo tem este formato:
 
 O exemplo ilustra o formato; publique apenas informações verificadas do seu produto. Incremente `version` ao alterar o conteúdo. Use `status: "draft"` para excluir um artigo da busca. A versão inicial inclui cinco artigos demonstrativos derivados das informações que já estavam no prompt.
 
-O servidor cria um índice textual em memória na inicialização, com trechos de até 900 caracteres. A busca normaliza acentos e prioriza título e palavras-chave. Recupera até quatro trechos, com até 5.000 caracteres no JSON de contexto; isso é um limite de caracteres, não de tokens. Os limiares de pontuação são heurísticos, não uma medida de certeza. Sinônimos podem ser adicionados em `keywords`. Perguntas de continuação explícitas usam também a pergunta anterior do usuário; o histórico do assistente não alimenta a busca.
+O servidor cria um índice textual em memória na inicialização, com trechos de até 900 caracteres. A busca normaliza acentos e prioriza título e palavras-chave. Cada chamada recupera até quatro trechos, com até 5.000 caracteres no JSON de contexto; isso é um limite de caracteres, não de tokens. Os limiares de pontuação são heurísticos, não uma medida de certeza. Sinônimos podem ser adicionados em `keywords`.
 
-O endpoint continua recebendo `{ "message": "..." }` ou `{ "messages": [...] }` e devolvendo `{ "reply": "...", "suggestions": [...] }`. Sem resultado, retorna uma mensagem de falta de informação sem chamar o modelo. Uma correspondência textual não garante que o artigo responda toda a pergunta; o prompt orienta a IA a reconhecer essa falta de cobertura. No modo sem chave, o retorno é somente um trecho literal. Falhas de busca retornam 503 e falhas de geração retornam 502. A geração tem prazo de 20 segundos.
+O endpoint continua recebendo `{ "message": "..." }` ou `{ "messages": [...] }` e devolvendo `{ "reply": "...", "suggestions": [...] }`. Com IA ativa, todas as mensagens passam pelo modelo com até 12 mensagens de histórico, sem roteamento por listas de frases. O modelo pode responder a uma interação social ou pedir esclarecimento sem buscar. Para dúvidas sobre o produto, o prompt exige consultar `searchKnowledge`, formulando uma pergunta autossuficiente com o contexto relevante. O histórico ajuda a interpretar a intenção, mas não é uma fonte verificada de fatos do produto. A empresa é fixada no servidor e não faz parte dos argumentos da ferramenta.
 
-Os logs registram IDs e versões das fontes selecionadas, versão do prompt, resultado da execução e, nas gerações, modelo e uso de tokens. O conteúdo das perguntas e dos artigos não é incluído explicitamente nesses logs de sucesso. A busca e a geração têm testes independentes de credenciais, usando o provedor simulado do AI SDK instalado.
+Uma busca sem resultados é devolvida ao modelo, que pode reformular a consulta, esclarecer a dúvida ou explicar a falta de informação. Uma correspondência textual não garante cobertura; o prompt orienta a IA a verificar a relevância e não inventar fatos. Essas regras de fundamentação são instruções ao modelo, não uma garantia determinística contra alucinações. O ciclo usa `ToolLoopAgent` com até duas buscas e três etapas de geração, desabilitando ferramentas na última etapa. O prazo de 20 segundos vale para a interação inteira. Interações sociais também consomem tokens, e consultas à base normalmente exigem mais de uma chamada ao modelo.
 
-Para testar no chat existente, pergunte “Esqueci minha senha”, “Quais são os planos?” e uma pergunta fora da base. Também é possível testar diretamente:
+As sugestões vêm do primeiro trecho recuperado; sem trechos, a resposta gerada retorna uma lista vazia. Falhas de busca retornam 503 e falhas de geração retornam 502. Sem chave (ou com `useLlm: false`), permanece o modo de busca literal: ele usa a última pergunta, acrescenta a anterior em continuações explícitas e retorna uma mensagem fixa quando não encontra trechos. Esse modo não interpreta respostas breves como o modelo.
+
+Os logs de sucesso registram IDs e versões das fontes selecionadas, versão do prompt, resultado da execução e, nas gerações, modelo, número de buscas/etapas e uso total de tokens de todas as etapas. O conteúdo das perguntas, consultas e artigos não é incluído explicitamente nesses logs de sucesso. Os testes com provedor simulado validam o histórico, a execução das ferramentas, a filtragem por empresa/publicação, consultas vazias, limites e erros. A qualidade da interpretação precisa também de avaliação com o modelo real.
+
+Para testar no chat existente, pergunte “Esqueci minha senha”, “Quais são os planos?” e uma pergunta fora da base. Teste também uma resposta curta à pergunta da Nora, um agradecimento e uma recusa. O comportamento depende do histórico: “não” após uma oferta de ajuda pode encerrar a conversa; após uma pergunta sobre recebimento de e-mail pode levar à consulta desse problema. Também é possível testar diretamente:
 
 ```bash
 curl http://localhost:3000/api/chat \
