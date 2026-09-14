@@ -10,7 +10,7 @@ Uma empresa copia um snippet para seu site. A página passa a exibir um botão f
 
 ## Situação no início do plano
 
-- `apps/admin/src/App.tsx` contém tanto a página hospedeira quanto o chatbot em `/chatbot`. O iframe usa uma URL relativa e demonstra incorporação na mesma origem.
+- `apps/admin/src/App.tsx` seleciona a página hospedeira ou o chatbot em `/chatbot`; as telas ficam em `apps/admin/src/tela/`. O iframe usa uma URL relativa e demonstra incorporação na mesma origem.
 - `apps/api/src/app.ts` oferece health check e chat, sem configuração de instalação ou validação de origens de incorporação.
 - O proxy `/api` existe no servidor de desenvolvimento do painel; a entrega de produção do widget precisa ter roteamento próprio.
 - Não existem loader público, botão flutuante externo, protocolo de comunicação ou demonstração em outra origem.

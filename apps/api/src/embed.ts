@@ -9,7 +9,7 @@ export const demoInstallations: Installation[] = [
   { installationId: 'inst_demo_b', companyId: 'company_b', name: 'Jardim & Casa', greeting: 'Que bom ter você aqui! Encontre ajuda para deixar sua casa mais verde.', color: '#32644d', active: true, allowedOrigins: ['http://localhost:4174'] },
   { installationId: 'inst_disabled', companyId: 'company_disabled', name: 'Desativada', greeting: 'Instalação desativada.', color: '#284e78', active: false, allowedOrigins: ['http://localhost:4174'] },
 ]
-export type EmbedOptions = { installations?: Installation[]; production?: boolean; loaderDir?: string; widgetDir?: string }
+export type EmbedOptions = { installations?: Installation[]; installationLookup?: (id: string) => Promise<Installation | undefined>; production?: boolean; loaderDir?: string; widgetDir?: string }
 export function registerEmbed(app: FastifyInstance, options: EmbedOptions = {}) {
   const production = options.production ?? process.env.NODE_ENV === 'production'
   // No local fixture is implicitly authorized on a production server.
@@ -40,18 +40,19 @@ export function registerEmbed(app: FastifyInstance, options: EmbedOptions = {}) 
   })
   app.get<{ Params: { installationId: string } }>('/embed/:installationId', async (request, reply) => {
     reply.header('Cache-Control', 'no-store').header('Content-Security-Policy', "frame-ancestors 'none'").header('X-Content-Type-Options', 'nosniff')
-    const installation = installations.find(item => item.installationId === request.params.installationId)
+    const installation = options.installationLookup ? await options.installationLookup(request.params.installationId) : installations.find(item => item.installationId === request.params.installationId)
     if (!installation) return reply.code(404).send({ error: 'Instalação não encontrada.' })
+    if (!isPublicInstallation(installation, !production)) return reply.code(503).send({ error: 'Configuração indisponível.' })
     if (!installation.active) return reply.code(403).send({ error: 'Instalação desativada.' })
     try {
       const template = await readFile(`${widgetDir}/index.html`, 'utf8')
       // Pick public fields explicitly: future secrets added to server fixtures cannot leak.
       const { installationId, companyId, name, greeting, color, allowedOrigins } = installation
-      const config: PublicInstallation = { installationId, companyId, name, greeting, color, allowedOrigins }
+      const config: PublicInstallation = { chatEnabled: Boolean(options.installationLookup), installationId, companyId, name, greeting, color, allowedOrigins }
       const json = JSON.stringify(config).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
       const nonce = randomBytes(18).toString('base64')
       const html = template.replaceAll('__NONCE__', nonce).replace('__COLOR__', color).replace('__SUPPORT_HUB_CONFIG__', () => json)
-      reply.header('Content-Security-Policy', `default-src 'none'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'nonce-${nonce}'; frame-ancestors ${allowedOrigins.join(' ')}; base-uri 'none'; form-action 'none'`)
+      reply.header('Content-Security-Policy', `default-src 'none'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'nonce-${nonce}'; frame-ancestors ${allowedOrigins.join(' ')}; connect-src 'self'; base-uri 'none'; form-action 'none'`)
       return reply.type('text/html; charset=utf-8').send(html)
     } catch { return reply.code(503).send({ error: 'Widget indisponível. Execute o build.' }) }
   })

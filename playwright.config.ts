@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test'
 export default defineConfig({
-  testDir: './tests/e2e', fullyParallel: true, workers: 3, timeout: 30_000,
+  testDir: './tests/e2e', outputDir: 'test-results/snippet', fullyParallel: true, workers: 3, timeout: 30_000,
   reporter: [['list'], ['json', { outputFile: 'test-results/report.json' }]],
   use: { baseURL: 'http://localhost:4174', trace: 'retain-on-failure' },
   projects: ['chromium', 'firefox', 'webkit'].flatMap(browserName =>

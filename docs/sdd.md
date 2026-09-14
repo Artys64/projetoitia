@@ -1,3 +1,5 @@
+> Revisão incremental — 14/09/2026: a entrega de mensagens persistentes usa HTTP autenticado e consulta periódica, com resposta completa. Jobs duráveis em PostgreSQL e worker independente sustentam a geração após fechar o iframe. SSE/WSS, sincronização entre abas, atendimento humano e citações navegáveis continuam como evolução prevista. Sessão opaca fica no iframe, por instalação e origem do pai validada, com fallback explícito em memória quando o armazenamento é bloqueado. Mensagens são renderizadas como texto com `textContent`; Markdown não é habilitado nesta entrega. Limites de tamanho abaixo são medidos em gzip. Detalhes e pendências em [operação do chat persistente](operacao-chat-persistente.md).
+
 Aqui está a **Especificação Técnica V2 refatorada**, agora adotando a **arquitetura baseada em `iframe`**. 
 
 Mudar de Web Components (Shadow DOM) para `iframe` altera significativamente como o widget é injetado, isolado e como ele se comunica com o site hospedeiro (através de `postMessage`). Esta nova versão detalha como lidar com os desafios clássicos do iframe (redimensionamento dinâmico, comunicação cross-origin e políticas de frame).

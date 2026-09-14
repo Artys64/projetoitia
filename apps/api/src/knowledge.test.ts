@@ -3,9 +3,9 @@ import { test } from 'node:test'
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { loadArticles, validateArticles, type Article } from './knowledge/repository.js'
-import { createTextSearch, retrievalQuery, splitContent } from './knowledge/search.js'
-import { buildContext, MAX_CONTEXT_CHARS } from './knowledge/context.js'
+import { loadArticles, validateArticles, type Article } from './ia/knowledge/repository.js'
+import { createTextSearch, retrievalQuery, splitContent } from './ia/knowledge/search.js'
+import { buildContext, MAX_CONTEXT_CHARS } from './ia/knowledge/context.js'
 
 const article: Article = {
   id: 'exportacao', companyId: 'a', version: 2, status: 'published',

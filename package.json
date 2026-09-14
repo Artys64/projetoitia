@@ -8,19 +8,23 @@
   ],
   "scripts": {
     "dev": "npm run build:embed && concurrently -n api,admin -c yellow,cyan \"npm run dev -w @support-hub/api\" \"npm run dev -w @support-hub/admin\"",
-    "build": "npm run build -w @support-hub/contracts && npm run build -w @support-hub/loader && npm run build -w @support-hub/widget && npm run build -w @support-hub/api && npm run build -w @support-hub/admin",
-    "check": "npm run build -w @support-hub/contracts && npm run check --workspaces --if-present",
+    "build": "npm run build -w @support-hub/contracts && npm run build -w @support-hub/loader && npm run build -w @support-hub/widget && npm run build -w @support-hub/api && npm run build -w @support-hub/worker && npm run build -w @support-hub/admin",
+    "check": "npm run build -w @support-hub/contracts && npm run build -w @support-hub/api && npm run check --workspaces --if-present",
     "test": "npm run build -w @support-hub/contracts && npm run test --workspaces --if-present",
     "demo": "npm run build && concurrently -k -n api,host \"npm run start -w @support-hub/api\" \"npm run start -w @support-hub/demo-host\"",
     "test:e2e": "npm run build && playwright test",
     "sizes": "node scripts/measure-bundles.mjs",
-    "build:embed": "npm run build -w @support-hub/contracts && npm run build -w @support-hub/loader && npm run build -w @support-hub/widget"
+    "build:embed": "npm run build -w @support-hub/contracts && npm run build -w @support-hub/loader && npm run build -w @support-hub/widget",
+    "db": "npm run db -w @support-hub/api --",
+    "test:db": "npm run build -w @support-hub/contracts && npm run test:db -w @support-hub/api",
+    "worker": "npm run dev -w @support-hub/worker",
+    "test:chat": "npm run build && playwright test --config playwright.chat.config.ts"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
     "@playwright/test": "^1.58.2"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   }
 }

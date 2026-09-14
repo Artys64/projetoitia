@@ -1,6 +1,6 @@
 # Plano de hospedagem e conexão de mensagens, histórico e IA
 
-Data: 11/09/2026. Status: planejamento; esta etapa ainda não foi implementada ou publicada.
+Plano de 11/09/2026. Atualização em 14/09/2026: contratos, persistência, worker e widget implementados; resultados em [verificação do chat persistente](verificacao-chat-persistente.md). Homologação HTTPS e piloto ainda não publicados; a avaliação real de qualidade da Nora também permanece pendente. Configuração e limites em [operação do chat persistente](operacao-chat-persistente.md).
 
 ## 1. Objetivo e recorte
 
@@ -26,9 +26,9 @@ O recorte antecipa chat com IA sem concluir todo P3/P4 do plano principal. Não 
 |---|---|---|
 | Loader e iframe | Instalação por script, identidade por instalação, navegação e handshake | Preservar contrato e validar em HTTPS externo |
 | Instalações | Fixtures locais em `apps/api/src/embed.ts`; produção sem instalações por padrão | Carregar instalações e origens reais do banco |
-| Mensagens do widget | View demonstrativa em `apps/widget/src/views/messages.ts` | Compositor, histórico, envio e estados de falha |
+| Mensagens do widget | View demonstrativa em `apps/widget/src/tela/messages.ts` | Compositor, histórico, envio e estados de falha |
 | API de chat | `/api/chat` recebe histórico do navegador e usa empresa fixa | Criar fluxo autenticado por sessão; histórico e empresa resolvidos pelo servidor |
-| Nora | `generateNoraResponse` em `apps/api/src/agents/nora.ts`, com busca de conhecimento e Groq | Reutilizar no worker com contexto da conversa e registrar execução |
+| Nora | `generateNoraResponse` em `apps/api/src/ia/agents/nora.ts`, com busca de conhecimento e Groq | Reutilizar no worker com contexto da conversa e registrar execução |
 | Conhecimento | JSON local, busca textual e publicação aplicada ao reiniciar | Migrar para PostgreSQL mantendo o contrato `KnowledgeSearch` |
 | Persistência | Sem banco de conversas ou fila durável | Migrações, repositórios, jobs e recuperação |
 | CSP do iframe | `default-src 'none'`, sem `connect-src` | Autorizar `connect-src 'self'` para chamadas à API |

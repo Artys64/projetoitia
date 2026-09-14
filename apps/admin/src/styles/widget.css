@@ -1,0 +1,118 @@
+.chat-widget {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.chat-widget-panel {
+  position: relative;
+  width: min(400px, calc(100vw - 48px));
+  height: min(680px, calc(100dvh - 112px));
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid #d9dee8;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgb(23 34 61 / 24%);
+  animation: widget-open 180ms ease-out;
+  transform-origin: bottom right;
+}
+
+.chat-widget-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.chat-widget-close {
+  position: absolute;
+  top: 22px;
+  right: 18px;
+  z-index: 2;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #dae0ed;
+  background: rgb(255 255 255 / 8%);
+  font-size: 1.55rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-widget-close:hover {
+  background: rgb(255 255 255 / 15%);
+}
+
+.chat-widget-launcher {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #10223d;
+  background: #65d6c7;
+  box-shadow: 0 12px 30px rgb(24 35 63 / 28%);
+  cursor: pointer;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.chat-widget-launcher:hover {
+  background: #4bc7b7;
+  transform: translateY(-2px);
+}
+
+.chat-widget-launcher span {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.chat-widget-launcher svg {
+  width: 29px;
+  height: 29px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.chat-widget-close:focus-visible,
+.chat-widget-launcher:focus-visible {
+  outline: 3px solid rgb(86 208 193 / 55%);
+  outline-offset: 3px;
+}
+
+@keyframes widget-open {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+
+@media (max-width: 520px) {
+
+  .chat-widget {
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .chat-widget-panel {
+    width: calc(100vw - 28px);
+    height: calc(100dvh - 98px);
+    min-height: 0;
+    border-radius: 18px;
+  }
+}

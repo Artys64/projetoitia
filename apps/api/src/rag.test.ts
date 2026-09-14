@@ -2,8 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { MockLanguageModelV4 } from 'ai/test'
 import { buildApp } from './app.js'
-import { createTextSearch } from './knowledge/search.js'
-import { loadArticles, type Article } from './knowledge/repository.js'
+import { createTextSearch } from './ia/knowledge/search.js'
+import { loadArticles, type Article } from './ia/knowledge/repository.js'
 
 const article: Article = {
   id: 'exportacao', companyId: 'support-hub', version: 3, status: 'published',

@@ -73,8 +73,10 @@ test('empresa correta, navegação persistente, teclado e host intacto', async (
   await expect(widget(page).locator('header')).toHaveCSS('background-color', 'rgb(50, 100, 77)')
   await page.setViewportSize({ width: 320, height: 568 })
   await expect(widget(page).getByRole('button', { name: 'Fechar central' })).toBeInViewport()
-  await page.screenshot({ path: info.outputPath('widget.png') })
+  // WebKit screenshot preparation injects a temporary 'body {}' stylesheet.
+  // Check application logs before that capture-only CSP violation.
   expect(violations).toEqual([])
+  await page.screenshot({ path: info.outputPath('widget.png'), caret: 'initial' })
 })
 
 test('snippet duplicado, conflito explícito, fila e off', async ({ page }) => {

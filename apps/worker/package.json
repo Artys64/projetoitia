@@ -1,0 +1,6 @@
+{
+  "name": "@support-hub/worker", "version": "0.1.0", "private": true, "type": "module",
+  "scripts": {"build":"tsc", "check":"tsc --noEmit", "start":"node --env-file-if-exists=../api/.env --env-file-if-exists=../api/.env.local dist/index.js", "dev":"node --env-file-if-exists=../api/.env --env-file-if-exists=../api/.env.local --import tsx src/index.ts"},
+  "dependencies": {"@support-hub/api":"0.1.0"},
+  "devDependencies": {"@types/node":"^24.3.1","typescript":"^5.9.2","tsx":"^4.20.5"}
+}

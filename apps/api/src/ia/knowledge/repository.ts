@@ -36,6 +36,6 @@ export function validateArticles(value: unknown): Article[] {
   return structuredClone(value as Article[])
 }
 
-export function loadArticles(path: string | URL = new URL('../../knowledge/articles.json', import.meta.url)): Article[] {
+export function loadArticles(path: string | URL = new URL('../../../knowledge/articles.json', import.meta.url)): Article[] {
   return validateArticles(JSON.parse(readFileSync(path, 'utf8')))
 }

@@ -1,10 +1,11 @@
+import Fastify from 'fastify'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { buildApp } from './app.js'
-import { demoInstallations } from './embed.js'
+import { demoInstallations, registerEmbed } from './embed.js'
 
 test('embed isola A/B, aplica CSP e entrega apenas recursos públicos', async t => {
   const dir = await mkdtemp(join(tmpdir(), 'support-hub-'))
@@ -44,11 +45,13 @@ test('embed isola A/B, aplica CSP e entrega apenas recursos públicos', async t 
 
 test('build ausente falha explicitamente e produção não autoriza fixtures HTTP', async t => {
   const app = buildApp({ logger: false, widgetDir: '/nonexistent', loaderDir: '/nonexistent' })
-  const production = buildApp({ logger: false, production: true })
+  const production = Fastify()
+  registerEmbed(production, { production: true })
+  assert.throws(() => buildApp({ logger: false, production: true }), /DATABASE_URL/)
   t.after(async () => { await app.close(); await production.close() })
   assert.equal((await app.inject('/embed/inst_demo_a')).statusCode, 503)
   assert.equal((await app.inject('/loader.js')).statusCode, 503)
   assert.equal((await production.inject('/embed/inst_demo_a')).statusCode, 404)
-  assert.throws(() => buildApp({ logger: false, production: true, installations: demoInstallations }), /inválida/)
+  assert.throws(() => registerEmbed(Fastify(), { production: true, installations: demoInstallations }), /inválida/)
   assert.throws(() => buildApp({ logger: false, installations: [demoInstallations[0]!, demoInstallations[0]!] }), /inválida/)
 })

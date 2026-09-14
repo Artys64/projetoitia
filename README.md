@@ -4,7 +4,7 @@ Monorepo TypeScript com painel React, API Fastify e central de suporte instaláv
 
 ## Requisitos
 
-- Node.js 22 ou superior
+- Node.js 24 ou superior (24.20.0 em `.nvmrc`)
 - npm 11 ou superior
 
 ## Executar localmente
@@ -31,9 +31,46 @@ npm run build    # gera os builds de produção
 
 ```text
 apps/
-  admin/  React + Vite
-  api/    Fastify
+  admin/                      Painel React + Vite
+    src/
+      tela/                   Telas HostPage e Chatbot
+      components/             Componentes reutilizáveis, como ChatWidget
+        chat/                 Cabeçalho, lista de mensagens e compositor
+      hooks/useChat.ts        Histórico, envio, sugestões e estado de conexão
+      services/chat.ts        Comunicação HTTP com o chat do painel
+      types/chat.ts           Tipos de apresentação das mensagens
+      styles/                 CSS base, painel, widget e chatbot
+      App.tsx                 Seleção da tela pela URL
+  api/                        Backend Fastify
+    src/
+      ia/
+        chat.ts               Rota HTTP do chat e tradução de erros
+        validation.ts         Validação e normalização das mensagens recebidas
+        service.ts            Resposta com IA ou busca local e metadados de execução
+        prompts/nora.ts       Instruções e versão do prompt da Nora
+        agents/               Agente Nora
+        knowledge/            Leitura, busca e contexto da base de conhecimento
+      app.ts                  Composição das rotas da API
+      embed.ts                Instalação e recursos do snippet
+    knowledge/articles.json   Dados da base local
+  widget/
+    src/tela/                 Telas Início, Mensagens e Ajuda do iframe
+  loader/                     Carregamento do widget na página hospedeira
+  demo-host/                  Páginas externas de demonstração
+packages/contracts/           Tipos e validações compartilhados
+  src/support-chat.ts         Requisição e resposta do chat síncrono do painel
+tests/e2e/                    Testes de integração no navegador
 ```
+
+Adicione novas telas às pastas `tela/` da aplicação correspondente. A lógica de IA
+fica em `apps/api/src/ia/`. No painel, a tela compõe os componentes, o hook gerencia
+a conversa e o serviço chama `/api/chat`. Esse endpoint de demonstração é habilitado
+fora de produção; o chat persistente do widget mantém seus contratos em
+`packages/contracts/src/chat.ts`.
+
+`apps/admin/src/styles.css` reúne as quatro folhas em `styles/`; cada uma inclui
+as regras responsivas da sua área. O prompt é compartilhado pelo agente e sua
+versão é usada nos registros da API e do worker.
 
 Copie `apps/api/.env.example` para `apps/api/.env` caso queira alterar a porta ou o endereço da API.
 
@@ -75,7 +112,7 @@ O servidor cria um índice textual em memória na inicialização, com trechos d
 
 O endpoint continua recebendo `{ "message": "..." }` ou `{ "messages": [...] }` e devolvendo `{ "reply": "...", "suggestions": [...] }`. Com IA ativa, todas as mensagens passam pelo modelo com até 12 mensagens de histórico, sem roteamento por listas de frases. O modelo pode responder a uma interação social ou pedir esclarecimento sem buscar. Para dúvidas sobre o produto, o prompt exige consultar `searchKnowledge`, formulando uma pergunta autossuficiente com o contexto relevante. O histórico ajuda a interpretar a intenção, mas não é uma fonte verificada de fatos do produto. A empresa é fixada no servidor e não faz parte dos argumentos da ferramenta.
 
-Uma busca sem resultados é devolvida ao modelo, que pode reformular a consulta, esclarecer a dúvida ou explicar a falta de informação. Uma correspondência textual não garante cobertura; o prompt orienta a IA a verificar a relevância e não inventar fatos. Essas regras de fundamentação são instruções ao modelo, não uma garantia determinística contra alucinações. O ciclo usa `ToolLoopAgent` com até duas buscas e três etapas de geração, desabilitando ferramentas na última etapa. O prazo de 20 segundos vale para a interação inteira. Interações sociais também consomem tokens, e consultas à base normalmente exigem mais de uma chamada ao modelo.
+Uma busca sem resultados é devolvida ao modelo, que pode reformular a consulta, esclarecer a dúvida ou explicar a falta de informação. Uma correspondência textual não garante cobertura; o prompt orienta a IA a verificar a relevância e não inventar fatos. Essas regras de fundamentação são instruções ao modelo, não uma garantia determinística contra alucinações. O ciclo usa `ToolLoopAgent` com até duas buscas e três etapas de geração, desabilitando ferramentas na última etapa. Cada etapa permite até 1.200 tokens de saída, com esforço de raciocínio médio na Groq. O prazo de 20 segundos vale para a interação inteira. Interações sociais também consomem tokens, e consultas à base normalmente exigem mais de uma chamada ao modelo.
 
 As sugestões vêm do primeiro trecho recuperado; sem trechos, a resposta gerada retorna uma lista vazia. Falhas de busca retornam 503 e falhas de geração retornam 502. Sem chave (ou com `useLlm: false`), permanece o modo de busca literal: ele usa a última pergunta, acrescenta a anterior em continuações explícitas e retorna uma mensagem fixa quando não encontra trechos. Esse modo não interpreta respostas breves como o modelo.
 
@@ -89,9 +126,9 @@ curl http://localhost:3000/api/chat \
   -d '{"message":"Como instalar o widget?"}'
 ```
 
-Esta etapa atende à demonstração de uma única empresa: `KNOWLEDGE_COMPANY_ID` é definido no servidor (padrão `support-hub`), nunca pelo corpo da requisição. Use apenas conhecimento público nesse endpoint, que ainda não tem autenticação. A filtragem por empresa na busca não substitui autenticação e autorização. O widget incorporável continua demonstrativo; o chat funcional está no painel em `/chatbot`.
+Esta etapa atende à demonstração de uma única empresa: `KNOWLEDGE_COMPANY_ID` é definido no servidor (padrão `support-hub`), nunca pelo corpo da requisição. Use apenas conhecimento público nesse endpoint, que ainda não tem autenticação. A filtragem por empresa na busca não substitui autenticação e autorização. Esse endpoint legado atende ao chat de desenvolvimento em `/chatbot`. Para o widget persistente, use as rotas autenticadas descritas abaixo.
 
-O índice permanece como uma fotografia do arquivo até reiniciar o processo; despublicar exige reiniciar todas as instâncias. Gestão de artigos pelo painel, atualização em tempo real, fontes clicáveis, persistência de auditoria e resolução de empresa por sessão autenticada ficam para próximas etapas. Para migrar a recuperação para PostgreSQL, implemente `KnowledgeSearch` em `apps/api/src/knowledge/search.ts`, mantendo a filtragem de empresa/publicação e o contrato de retorno. A implementação atual não usa banco, embeddings nem novas dependências.
+O índice permanece como uma fotografia do arquivo até reiniciar o processo; despublicar exige reiniciar todas as instâncias. Gestão de artigos pelo painel, atualização em tempo real, fontes clicáveis, persistência de auditoria e resolução de empresa por sessão autenticada ficam para próximas etapas. Para migrar a recuperação para PostgreSQL, implemente `KnowledgeSearch` em `apps/api/src/ia/knowledge/search.ts`, mantendo a filtragem de empresa/publicação e o contrato de retorno. Esse modo legado usa JSON e não usa embeddings. O worker do widget persistente consulta os artigos no PostgreSQL.
 
 ## Instalação por snippet (demonstração local)
 
@@ -137,7 +174,7 @@ window.addEventListener('supporthub:error', event => console.error(event.detail.
 
 Registre esses listeners antes de o script terminar de carregar (a demonstração usa um script `defer` anterior ao loader). Os eventos não são reproduzidos para listeners registrados depois. `open` e `close` aguardam `ready`, com até 20 comandos pendentes. O handshake tem limite de 10 segundos. Falhas removem o botão/iframe e ficam observáveis pelo evento global `supporthub:error`, inclusive conflitos anteriores à criação da API, e pelo console. Após falha fatal, recarregue para tentar novamente.
 
-Repetir o mesmo snippet preserva uma única instância. Um ID diferente emite `installation_conflict` e mantém a primeira instalação. Um `window.SupportHub` preexistente é preservado (`global_conflict`). Fechar ou usar ESC preserva a seção selecionada e devolve o foco ao acionador; recarregar reinicia a navegação. Mensagens e Ajuda são demonstrativas, sem envio ou persistência de conversas.
+Repetir o mesmo snippet preserva uma única instância. Um ID diferente emite `installation_conflict` e mantém a primeira instalação. Um `window.SupportHub` preexistente é preservado (`global_conflict`). Fechar ou usar ESC preserva a seção selecionada e devolve o foco ao acionador; recarregar reinicia a navegação. Sem banco, Mensagens e Ajuda são demonstrativas. Com PostgreSQL configurado, Mensagens oferece conversa persistente com a Nora; Ajuda continua demonstrativa.
 
 ### Origens, CSP e produção
 
@@ -145,7 +182,7 @@ As fixtures estão em `apps/api/src/embed.ts`. A/B compartilham explicitamente a
 
 Se o host tiver CSP, adicione a origem real do produto a `script-src`, `frame-src` e **`style-src`** (ou às diretivas `*-src-elem`, caso definidas). O botão usa uma folha externa dentro de Shadow DOM, sem exigir `unsafe-inline`. As páginas de demonstração enviam essa política restritiva por cabeçalho HTTP. O servidor do widget usa nonce para a cor validada. Não configure `X-Frame-Options: DENY/SAMEORIGIN` no proxy do embed.
 
-Em produção, configure instalações HTTPS explícitas no bootstrap via `buildApp({ installations: [...] })`; com `NODE_ENV=production`, nenhuma fixture local é habilitada automaticamente. Não publique as fixtures como configuração real. A prova em dois domínios HTTPS e a verificação em Safari/iOS real continuam pendentes.
+Em produção, configure instalações HTTPS explícitas no bootstrap via `buildApp({ installations: [...] })`; com `NODE_ENV=production`, nenhuma fixture local é habilitada automaticamente. Não publique as fixtures como configuração real. A prova em dois domínios HTTPS e a verificação em Safari/iOS real continuam pendentes; veja a etapa persistente no final deste documento.
 
 ### Validação
 
@@ -171,3 +208,21 @@ tests/e2e/         Prova local entre origens distintas
 ```
 
 Resultados e limitações desta entrega: [verificação do snippet](docs/verificacao-snippet.md).
+
+## Chat persistente no widget
+
+Implementação com PostgreSQL, sessões opacas, histórico paginado, mensagens idempotentes e worker separado para a Nora. A instalação por snippet permanece a mesma. A resposta continua em processamento mesmo após fechar o widget e pode ser retomada no mesmo site/navegador quando o armazenamento é permitido.
+
+Consulte [configuração local, cadastro de instalações, Render e operação](docs/operacao-chat-persistente.md). O `render.yaml` está preparado para homologação e ainda não foi aplicado. API de produção exige `DATABASE_URL`, serve apenas instalações cadastradas e desabilita `/api/chat`; a chave Groq fica no worker.
+
+```bash
+npm run db -- migrate
+npm run db -- provision
+npm run worker
+npm run test:db
+npm run test:chat
+```
+
+O banco de runtime deve usar `support_hub_app` e o comando administrativo usa `MIGRATION_DATABASE_URL`. Nenhuma fixture é publicada automaticamente. Autenticação administrativa, atendimento humano, streaming e gestão de artigos pelo painel ficam para entregas próprias.
+
+Resultados desta etapa: [verificação do chat persistente](docs/verificacao-chat-persistente.md).

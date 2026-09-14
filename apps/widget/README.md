@@ -10,7 +10,7 @@ os comandos de abrir e fechar chegam da página hospedeira por `postMessage`.
 - `src/widget.ts`: composição da interface, navegação, canal e eventos de teclado.
 - `src/shell.ts`: estrutura fixa, identificação da empresa e referências do DOM.
 - `src/navigation.ts`: seção selecionada, cliques de navegação e `aria-current`.
-- `src/views/`: conteúdo de Início, Mensagens e Ajuda, em arquivos separados.
+- `src/tela/`: conteúdo de Início, Mensagens e Ajuda, em arquivos separados.
 - `src/parent-channel.ts`: handshake, validação das mensagens e estado de abertura.
 - `src/styles.css`: apresentação visual.
 

@@ -17,7 +17,7 @@ export function renderShell(root: HTMLElement, companyName: string) {
         <button data-view="help">Ajuda</button>
       </nav>
 
-      <footer>Uma demonstração da Support Hub</footer>
+      <footer>Support Hub</footer>
     </main>
   `
 

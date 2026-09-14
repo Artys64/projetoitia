@@ -1,4 +1,5 @@
 export type PublicInstallation = {
+  chatEnabled?: boolean
   installationId: string
   companyId: string
   name: string
@@ -52,8 +53,10 @@ export function isAllowedOrigin(value: unknown, allowLocal = false): value is st
 }
 export function isPublicInstallation(value: unknown, allowLocal = false): value is PublicInstallation {
   if (!record(value)) return false
-  return identifier(value.installationId) && identifier(value.companyId) && text(value.name, 80) &&
+  return (value.chatEnabled === undefined || typeof value.chatEnabled === 'boolean') && identifier(value.installationId) && identifier(value.companyId) && text(value.name, 80) &&
     text(value.greeting, 240) && typeof value.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(value.color) &&
     Array.isArray(value.allowedOrigins) && value.allowedOrigins.length > 0 && value.allowedOrigins.length <= 20 &&
     value.allowedOrigins.every(origin => isAllowedOrigin(origin, allowLocal))
 }
+export * from './chat.js'
+export type { SupportChatMessage, SupportChatRequest, SupportChatResponse } from './support-chat.js'

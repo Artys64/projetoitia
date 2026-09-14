@@ -8,17 +8,32 @@
     "build": "tsc -p tsconfig.build.json",
     "check": "tsc --noEmit --pretty false",
     "start": "node dist/server.js",
-    "test": "node --import tsx --test src/**/*.test.ts"
+    "test": "node --import tsx --test --test-isolation=none src/**/*.test.ts",
+    "db": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx src/db/cli.ts",
+    "test:db": "node --import tsx --test --test-isolation=none test/*.test.ts"
   },
   "dependencies": {
     "@ai-sdk/groq": "^4.0.40",
+    "@support-hub/contracts": "0.1.0",
     "ai": "^7.0.97",
     "fastify": "^5.6.0",
-    "@support-hub/contracts": "0.1.0"
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@types/node": "^24.3.1",
+    "@types/pg": "^8.23.1",
+    "embedded-postgres": "^18.4.0-beta.17",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
+  },
+  "exports": {
+    "./database": {
+      "types": "./dist/db/database.d.ts",
+      "default": "./dist/db/database.js"
+    },
+    "./worker": {
+      "types": "./dist/db/worker.d.ts",
+      "default": "./dist/db/worker.js"
+    }
   }
 }

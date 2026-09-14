@@ -1,5 +1,6 @@
 import { isStepCount, jsonSchema, tool, ToolLoopAgent, type LanguageModel, type ModelMessage } from 'ai'
-import { buildContext, instructionsFor } from '../knowledge/context.js'
+import { buildContext } from '../knowledge/context.js'
+import { instructionsFor } from '../prompts/nora.js'
 import type { KnowledgeSearch, SearchHit } from '../knowledge/search.js'
 
 const MAX_SEARCHES = 2

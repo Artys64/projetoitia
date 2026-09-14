@@ -1,6 +1,7 @@
 import { envelope, isEnvelope, type PublicInstallation } from '@support-hub/contracts'
 
 type ParentChannelOptions = Pick<PublicInstallation, 'installationId' | 'allowedOrigins'> & {
+  onReady?: (origin: string) => void
   onOpen: () => void
   onDismiss: () => void
 }
@@ -36,6 +37,7 @@ export function connectParent(widgetWindow: Window, options: ParentChannelOption
         return
       }
 
+      if (!session) options.onReady?.(event.origin)
       session = { origin: event.origin, instanceId: message.instanceId }
       widgetWindow.parent.postMessage(
         envelope('ready', session.instanceId, message.requestId, { installationId }),
