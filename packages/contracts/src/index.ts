@@ -59,4 +59,5 @@ export function isPublicInstallation(value: unknown, allowLocal = false): value 
     value.allowedOrigins.every(origin => isAllowedOrigin(origin, allowLocal))
 }
 export * from './chat.js'
+export * from './knowledge.js'
 export type { SupportChatMessage, SupportChatRequest, SupportChatResponse } from './support-chat.js'

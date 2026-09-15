@@ -56,6 +56,21 @@ export class ChatStore {
       return work(sql,session)
     })
   }
+  /** Early HTTP guard. Mutations still revalidate under locks in authenticated(). */
+  async authenticate(token: string): Promise<Session> {
+    if (!/^[A-Za-z0-9_-]{43}$/.test(token)) throw new ChatError(401,'session_expired','Sua sessão expirou. Inicie uma nova sessão.')
+    return this.db.transaction(null, async sql => {
+      await sql.query("SELECT set_config('app.token_hash',$1,true)", [digest(token)])
+      const result = await sql.query(`SELECT s.id,s.tenant_id,s.installation_id
+        FROM visitor_sessions s JOIN installations i ON i.id=s.installation_id
+        JOIN tenants t ON t.id=s.tenant_id
+        WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at>clock_timestamp()
+          AND i.active AND t.active`, [digest(token)])
+      const session = result.rows[0] as Session | undefined
+      if (!session) throw new ChatError(401,'session_expired','Sua sessão expirou ou a instalação está indisponível.')
+      return session
+    })
+  }
   async revoke(token: string) { return this.authenticated(token, async (sql,s) => { await sql.query('UPDATE visitor_sessions SET revoked_at=now() WHERE id=$1',[s.id]); return { revoked: true } }) }
   async idempotent<T>(sql: Sql,s: Session,key: string,payload: unknown,work:()=>Promise<T>): Promise<T> {
     if (!/^[a-zA-Z0-9_-]{16,80}$/.test(key)) throw new ChatError(400,'invalid_key','Envie uma chave de idempotência válida.')

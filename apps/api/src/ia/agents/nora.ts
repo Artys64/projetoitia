@@ -1,7 +1,9 @@
-import { isStepCount, jsonSchema, tool, ToolLoopAgent, type LanguageModel, type ModelMessage } from 'ai'
-import { buildContext } from '../knowledge/context.js'
-import { instructionsFor } from '../prompts/nora.js'
+import { isStepCount, jsonSchema, tool, ToolLoopAgent, type LanguageModel, type LanguageModelUsage, type ModelMessage } from 'ai'
+import { buildContext, collectEvidence, type KnowledgeEvidence } from '../knowledge/context.js'
+import { instructionsFor, PROMPT_VERSION } from '../prompts/nora.js'
 import type { KnowledgeSearch, SearchHit } from '../knowledge/search.js'
+import { CallDeadlineError, requireTime, withinDeadline, RESPONSE_TIMEOUT_MS } from '../deadline.js'
+import { sumUsage } from '../usage.js'
 
 const MAX_SEARCHES = 2
 const MAX_STEPS = 3
@@ -31,16 +33,25 @@ export class KnowledgeSearchError extends Error {
   }
 }
 
-export async function generateNoraResponse(options: {
+type NoraOptions = {
   model: LanguageModel
   messages: ModelMessage[]
   search: KnowledgeSearch
   companyId: string
-}) {
+  deadlineAt?: number
+  onUsage?: (usage: LanguageModelUsage) => void
+}
+
+export async function generateNoraDraft(options: NoraOptions) {
+  const started = Date.now()
+  const deadlineAt = Math.min(options.deadlineAt ?? started + RESPONSE_TIMEOUT_MS, started + RESPONSE_TIMEOUT_MS)
+  requireTime(deadlineAt)
   // Per-request state: neither history nor retrieved sources leak across conversations.
   const sources: SearchHit[] = []
+  let evidence: KnowledgeEvidence[] = []
   let searches = 0
-  let searchError: KnowledgeSearchError | undefined
+  let searchError: KnowledgeSearchError | CallDeadlineError | undefined
+  const stepUsage: LanguageModelUsage[] = []
   const agent = new ToolLoopAgent({
     model: options.model,
     instructions: instructionsFor(),
@@ -53,11 +64,16 @@ export async function generateNoraResponse(options: {
           if (searches >= MAX_SEARCHES) return { status: 'limit_reached', context: '[]' }
           searches++
           try {
+            requireTime(deadlineAt)
             const retrieved = buildContext(await options.search(query, options.companyId))
-            sources.push(...retrieved.sources)
+            evidence = collectEvidence(options.companyId, retrieved.sources, evidence)
+            for (const source of retrieved.sources) {
+              if (!sources.some(previous => previous.companyId === source.companyId && previous.articleId === source.articleId &&
+                previous.version === source.version && previous.chunk === source.chunk)) sources.push(source)
+            }
             return { status: retrieved.sources.length ? 'found' : 'not_found', context: retrieved.context }
           } catch (error) {
-            searchError = new KnowledgeSearchError(error)
+            searchError = error instanceof CallDeadlineError ? error : new KnowledgeSearchError(error)
             throw searchError
           }
         },
@@ -67,22 +83,37 @@ export async function generateNoraResponse(options: {
     prepareStep: ({ stepNumber }) => {
       // The SDK captures tool errors; propagate lookup failures before another LLM call.
       if (searchError) throw searchError
+      requireTime(deadlineAt)
       if (stepNumber >= MAX_STEPS - 1 || searches >= MAX_SEARCHES) return { toolChoice: 'none' }
     },
     // Leave room for contextual interpretation and tool selection in reasoning models.
     maxOutputTokens: 1200,
     temperature: 0,
+    maxRetries: 0,
+    onStepEnd: step => {
+      stepUsage.push(step.usage)
+      options.onUsage?.(sumUsage(...stepUsage))
+    },
     providerOptions: { groq: { reasoningEffort: 'medium', parallelToolCalls: false } },
   })
 
-  const result = await agent.generate({ messages: options.messages, abortSignal: AbortSignal.timeout(20000) })
+  const result = await withinDeadline(deadlineAt, abortSignal => agent.generate({ messages: options.messages, abortSignal }))
   if (searchError) throw searchError
   return {
     text: result.text,
     sources,
+    evidence: Object.freeze(evidence),
+    promptVersion: PROMPT_VERSION,
+    durationMs: Date.now() - started,
     searches,
     steps: result.steps.length,
     model: result.response.modelId,
     usage: result.totalUsage,
   }
+}
+
+/** Unverified baseline for the offline comparison script only; never use in chat publication. */
+export async function generateNoraResponse(options: NoraOptions) {
+  const { text, sources, searches, steps, model, usage } = await generateNoraDraft(options)
+  return { text, sources, searches, steps, model, usage }
 }

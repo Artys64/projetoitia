@@ -1,0 +1,22 @@
+# PostgreSQL exclusivo para homologação local. API e worker rodam no host.
+# Uso: docker compose --env-file .env.homologacao.db -f compose.homologacao.yaml up -d --wait
+name: support-hub-homologacao
+services:
+  db:
+    image: postgres:18.4
+    environment:
+      POSTGRES_DB: support_hub_homologacao
+      POSTGRES_USER: support_hub_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configure POSTGRES_PASSWORD em .env.homologacao.db}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U support_hub_owner -d support_hub_homologacao"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    stop_grace_period: 30s
+volumes:
+  postgres_data:

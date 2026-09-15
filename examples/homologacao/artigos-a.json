@@ -1,0 +1,22 @@
+[
+  {
+    "id": "horario-atendimento",
+    "companyId": "hml_a",
+    "version": 1,
+    "status": "published",
+    "title": "Horário de atendimento da Aurora Studio",
+    "keywords": ["horário", "atendimento", "abre", "funcionamento"],
+    "content": "Dados fictícios para homologação. A Aurora Studio atende de segunda a sexta-feira, das 9h às 18h, no horário de Brasília. Não há atendimento aos sábados e domingos.",
+    "suggestions": []
+  },
+  {
+    "id": "acompanhar-solicitacao",
+    "companyId": "hml_a",
+    "version": 1,
+    "status": "published",
+    "title": "Como acompanhar uma solicitação na Aurora Studio",
+    "keywords": ["solicitação", "acompanhar", "protocolo", "pedido"],
+    "content": "Dados fictícios para homologação. Para acompanhar uma solicitação na Aurora Studio, entre no portal da empresa, abra a seção Minhas solicitações e selecione o protocolo. O andamento aparece no campo Situação.",
+    "suggestions": []
+  }
+]

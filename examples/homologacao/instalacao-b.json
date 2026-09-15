@@ -1,0 +1,9 @@
+{
+  "installationId": "inst_hml_b",
+  "companyId": "hml_b",
+  "name": "Jardim e Casa — Homologação",
+  "greeting": "Olá! Este é o atendimento de teste da Jardim e Casa.",
+  "color": "#2f6b45",
+  "allowedOrigins": ["https://host-b.example"],
+  "active": true
+}

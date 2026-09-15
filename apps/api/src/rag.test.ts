@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { MockLanguageModelV4 } from 'ai/test'
 import { buildApp } from './app.js'
+import { LOCAL_DEMO_PREFIX } from './ia/service.js'
 import { createTextSearch } from './ia/knowledge/search.js'
 import { loadArticles, type Article } from './ia/knowledge/repository.js'
 
@@ -40,7 +41,7 @@ test('envia trechos recuperados ao modelo e mantém reply/suggestions', async co
   context.after(() => app.close())
   const response = await app.inject({ method: 'POST', url: '/api/chat', payload: { message: 'Como exportar?', companyId: 'outra' } })
   assert.equal(response.statusCode, 200)
-  assert.deepEqual(response.json(), { reply: 'Você pode exportar em CSV.', suggestions: article.suggestions })
+  assert.deepEqual(response.json(), { reply: 'Você pode exportar em CSV.', suggestions: [] })
   assert.equal(model.doGenerateCalls.length, 2)
   assert.doesNotMatch(JSON.stringify(model.doGenerateCalls[0]?.prompt), /arquivo CSV/)
   const prompt = JSON.stringify(model.doGenerateCalls[1]?.prompt)
@@ -79,7 +80,7 @@ test('modo local usa a base personalizada e aceita sua resposta no próximo turn
   context.after(() => app.close())
   const response = await app.inject({ method: 'POST', url: '/api/chat', payload: { message: 'Como exportar?' } })
   assert.equal(response.statusCode, 200)
-  assert.equal(response.json().reply, longArticle.content.trim())
+  assert.equal(response.json().reply, LOCAL_DEMO_PREFIX + longArticle.content.trim())
   const next = await app.inject({ method: 'POST', url: '/api/chat', payload: { messages: [
     { role: 'user', content: 'Como exportar?' },
     { role: 'assistant', content: response.json().reply },
@@ -97,7 +98,7 @@ test('falha da ferramenta retorna 503 sem gerar resposta após a falha', async c
   assert.equal(model.doGenerateCalls.length, 1)
 })
 
-test('resposta vazia usa fallback e falha do provedor retorna 502', async context => {
+test('resposta vazia e falha do provedor retornam 502', async context => {
   for (const failing of [false, true]) {
     const model = new MockLanguageModelV4({ doGenerate: async () => {
       if (failing) throw new Error('falha simulada')
@@ -106,8 +107,8 @@ test('resposta vazia usa fallback e falha do provedor retorna 502', async contex
     const app = buildApp({ logger: false, languageModel: model, knowledgeSearch: createTextSearch([article]) })
     context.after(() => app.close())
     const response = await app.inject({ method: 'POST', url: '/api/chat', payload: { message: 'Como exportar?' } })
-    assert.equal(response.statusCode, failing ? 502 : 200)
-    if (!failing) assert.match(response.json().reply, /não encontrei/)
+    assert.equal(response.statusCode, 502)
+    assert.equal(response.json().reply, undefined)
   }
 })
 
@@ -177,7 +178,7 @@ test('permite reformular uma busca vazia e força resposta na terceira etapa', a
   assert.equal(model.doGenerateCalls.length, 3)
   assert.deepEqual(model.doGenerateCalls[2]?.toolChoice, { type: 'none' })
   assert.match(JSON.stringify(model.doGenerateCalls[2]?.prompt), /arquivo CSV/)
-  assert.deepEqual(response.json().suggestions, article.suggestions)
+  assert.deepEqual(response.json().suggestions, [])
 })
 
 test('limite de buscas também vale para várias chamadas na mesma etapa', async context => {

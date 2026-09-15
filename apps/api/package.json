@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "check": "tsc --noEmit --pretty false",
     "start": "node dist/server.js",
-    "test": "node --import tsx --test --test-isolation=none src/**/*.test.ts",
+    "test": "node --import tsx --test --test-isolation=none \"src/**/*.test.ts\"",
     "db": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --import tsx src/db/cli.ts",
     "test:db": "node --import tsx --test --test-isolation=none test/*.test.ts"
   },

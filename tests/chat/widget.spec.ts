@@ -38,3 +38,20 @@ test('falha da IA preserva pergunta, mostra retry e encerrar sessão remove aces
   await widget(page).getByRole('button',{name:'Encerrar sessão neste navegador'}).click();await expect(widget(page).getByText('Sessão encerrada.')).toBeVisible()
   await open(page);await expect(widget(page).getByText('Nenhuma conversa por aqui')).toBeVisible()
 })
+
+test('falha transitória da geração preserva a pergunta e retry produz uma única resposta final',async({page},info)=>{
+  await create(page)
+  const question=`falhar geração ${info.project.name} ${Date.now()}`
+  await widget(page).getByLabel('Sua mensagem').fill(question)
+  await widget(page).getByRole('button',{name:'Enviar',exact:true}).click()
+  await expect(widget(page).getByRole('button',{name:'Tentar resposta novamente'})).toBeVisible()
+  await expect(widget(page).locator('.chat-message.user')).toHaveCount(1)
+  await expect(widget(page).locator('.chat-message.assistant')).toHaveCount(0)
+  await expect(widget(page).locator('#history')).not.toContainText('RASCUNHO BLOQUEADO')
+  await page.screenshot({path:info.outputPath('generation-retry.png'),caret:'initial'})
+  await widget(page).getByRole('button',{name:'Tentar resposta novamente'}).click()
+  await expect(widget(page).locator('.chat-message.assistant')).toHaveCount(1)
+  await expect(widget(page).locator('.chat-message.user')).toHaveCount(1)
+  await expect(widget(page).getByRole('button',{name:'Tentar resposta novamente'})).toBeHidden()
+  await expect(widget(page).locator('#history')).not.toContainText('RASCUNHO BLOQUEADO')
+})

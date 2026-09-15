@@ -9,15 +9,20 @@
   "scripts": {
     "dev": "npm run build:embed && concurrently -n api,admin -c yellow,cyan \"npm run dev -w @support-hub/api\" \"npm run dev -w @support-hub/admin\"",
     "build": "npm run build -w @support-hub/contracts && npm run build -w @support-hub/loader && npm run build -w @support-hub/widget && npm run build -w @support-hub/api && npm run build -w @support-hub/worker && npm run build -w @support-hub/admin",
-    "check": "npm run build -w @support-hub/contracts && npm run build -w @support-hub/api && npm run check --workspaces --if-present",
-    "test": "npm run build -w @support-hub/contracts && npm run test --workspaces --if-present",
-    "demo": "npm run build && concurrently -k -n api,host \"npm run start -w @support-hub/api\" \"npm run start -w @support-hub/demo-host\"",
+    "check": "npm run build -w @support-hub/contracts && npm run build -w @support-hub/api && npm run check --workspaces --if-present && npm run check:quality",
+    "test": "npm run build -w @support-hub/contracts && npm run test --workspaces --if-present && npm run test:quality",
+    "test:quality": "node --import tsx --test tests/nora-quality.test.mts",
+    "check:quality": "tsc --noEmit --pretty false --module NodeNext --moduleResolution NodeNext --target ES2023 --strict --skipLibCheck --noUncheckedIndexedAccess scripts/lib/nora-quality.mts scripts/inspect-nora-quality.mts tests/nora-quality.test.mts",
+    "quality:corpus": "node --import tsx scripts/inspect-nora-quality.mts",
+    "demo": "npm run build && node --env-file-if-exists=apps/api/.env --env-file-if-exists=apps/api/.env.local --import tsx scripts/demo.mts",
+    "demo:visual": "npm run build && concurrently -k -n api,host \"npm run start -w @support-hub/api\" \"npm run start -w @support-hub/demo-host\"",
     "test:e2e": "npm run build && playwright test",
     "sizes": "node scripts/measure-bundles.mjs",
     "build:embed": "npm run build -w @support-hub/contracts && npm run build -w @support-hub/loader && npm run build -w @support-hub/widget",
     "db": "npm run db -w @support-hub/api --",
     "test:db": "npm run build -w @support-hub/contracts && npm run test:db -w @support-hub/api",
     "worker": "npm run dev -w @support-hub/worker",
+    "dev:widget": "npm run build:embed && npm run build -w @support-hub/api && npm run build -w @support-hub/worker && NODE_ENV=development HOST=127.0.0.1 PORT=3100 TRUST_PROXY_HOPS=0 concurrently -k -n api,worker \"node --env-file=apps/api/.env --env-file=apps/api/.env.local apps/api/dist/server.js\" \"node --env-file=apps/api/.env --env-file=apps/api/.env.local apps/worker/dist/index.js\"",
     "test:chat": "npm run build && playwright test --config playwright.chat.config.ts"
   },
   "devDependencies": {

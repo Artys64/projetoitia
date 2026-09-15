@@ -47,7 +47,15 @@ npm run db -- articles /caminho/artigos.json
 
 O formato de artigos continua sendo o documentado no README, com `companyId` correspondente à instalação. Os artigos existentes em `apps/api/knowledge/articles.json` podem ser importados após cadastrar a empresa `support-hub`; nenhuma cópia automática entre empresas é feita. Versões são imutáveis: altere o conteúdo incrementando `version`. `status: "draft"` remove a publicação imediatamente. Importar apenas alguns artigos não exclui os demais. Instalações não podem mudar de empresa.
 
-Sem `DATABASE_URL`, a demonstração navegável anterior continua disponível e informa que o chat não está disponível. Com banco, apenas instalações cadastradas são servidas; as fixtures não são fallback. Produção exige banco e não registra `/api/chat`.
+`npm run demo` carrega os arquivos de ambiente da API e exige banco migrado,
+papel de runtime provisionado e chave Groq. O comando cadastra explicitamente
+`inst_demo_a`/`company_a` e `inst_demo_b`/`company_b`, a instalação desativada de
+teste e um artigo fictício de horário para cada empresa ativa, preservando o
+histórico. Depois inicia API, worker e host. Não execute em produção.
+
+Sem banco, use `npm run demo:visual` para a demonstração navegável que informa
+que o chat está indisponível. Com banco, apenas instalações cadastradas são
+servidas; as fixtures não são fallback. Produção exige banco e não registra `/api/chat`.
 
 ## Sessões, limites e recuperação
 
@@ -76,7 +84,25 @@ API, worker e importador bloqueiam a empresa primeiro para manter reservas e pub
 
 Uma mensagem confirmada, execução e job são gravados na mesma transação. A mesma chave de idempotência recupera uma confirmação perdida; um payload diferente gera 409. O widget conserva a chave de um envio não confirmado. Geração falhada mantém a pergunta, permite retry controlado e não executa loops automáticos de erro. Lease expirada pode ser recuperada por outro worker; token de lease e tentativa impedem publicação do worker antigo. Antes da resposta, instalação, sessão, conversa e versões publicadas são revalidadas.
 
+## Geração e auditoria das respostas
+
+Worker e chat de desenvolvimento com LLM usam `generateNoraResponse`. Cada tentativa faz somente a geração da Nora, com prazo máximo de 20 segundos e retries automáticos do SDK desativados. Resposta vazia, falha de busca, falha do provedor ou timeout bloqueiam a tentativa.
+
+Aplique `npm run db -- migrate` antes de iniciar esta versão do worker. A migração aditiva `002_response_verification.sql` cria `ai_run_attempts`, com RLS por empresa e chave por execução/tentativa. Ela concede as permissões necessárias ao papel de runtime já existente; o provisionamento também inclui a nova tabela. Nenhuma tabela anterior é removida e os registros antigos não são reescritos.
+
+Cada tentativa registra versão do prompt, modelo, uso reportado, duração, fontes recuperadas, estado final e modo efetivamente publicado. Perguntas e respostas não são armazenadas nessa auditoria. A linha é iniciada junto com a aquisição da lease. Uma conclusão tardia pode preencher apenas a auditoria da própria tentativa expirada, mantendo-a expirada; não altera a execução nem a tentativa mais nova. Crashes sem resultado conhecido deixam o uso desconhecido.
+
+Após a geração fora da transação, a publicação revalida empresa, instalação, sessão, conversa, lease e todas as versões recuperadas. Expiração de sessão e lease também são conferidas por `clock_timestamp()` no `INSERT`, depois de eventuais esperas por locks. Mensagem final, auditoria e conclusão da execução são gravadas atomicamente.
+
+Erros de geração preservam a pergunta e permitem a nova tentativa já oferecida pelo widget, dentro dos limites existentes. `source_changed` continua exigindo nova pergunta. O endpoint de mensagens expõe apenas estado/código de erro e mensagens publicadas; não expõe auditoria interna. Sem LLM, `/api/chat` identifica explicitamente a resposta como demonstração local sem avaliação de pertinência.
+
+`npm run db -- metrics` preserva `counts`, `queue` e `reservations` e acrescenta `attempts` e `publications`. `counts.tokens` continua descrevendo o último resultado de cada execução. Para consumo incluindo retries e leases expiradas, use `attempts.known_tokens` junto com `unknown_usage_count`. A retenção da auditoria deve ser definida com a retenção das conversas antes de usar dados reais.
+
+Os testes locais usam provedor simulado. Integração técnica aprovada não implica qualidade semântica aprovada com a Groq; veja o [plano de qualidade](plano-qualidade-respostas-nora.md).
+
 ## Render: configuração preparada, ainda não aplicada
+
+Alternativa sem cartão: [homologação local com Quick Tunnel HTTPS](homologacao-sem-cartao.md). Use esse procedimento para sessões agendadas sem contratar os recursos pagos abaixo.
 
 O `render.yaml` descreve API, worker e PostgreSQL em homologação separada, com deploy automático desligado. Região e recursos pagos são propostas para revisão. A sintaxe foi consultada na [referência oficial do Blueprint](https://render.com/docs/blueprint-spec).
 

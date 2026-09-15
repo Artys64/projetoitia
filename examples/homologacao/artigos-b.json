@@ -1,0 +1,22 @@
+[
+  {
+    "id": "horario-atendimento",
+    "companyId": "hml_b",
+    "version": 1,
+    "status": "published",
+    "title": "Horário de atendimento da Jardim e Casa",
+    "keywords": ["horário", "atendimento", "abre", "funcionamento"],
+    "content": "Dados fictícios para homologação. A Jardim e Casa atende de terça-feira a sábado, das 10h às 16h, no horário de Brasília. Não há atendimento aos domingos e segundas-feiras.",
+    "suggestions": []
+  },
+  {
+    "id": "acompanhar-solicitacao",
+    "companyId": "hml_b",
+    "version": 1,
+    "status": "published",
+    "title": "Como acompanhar uma solicitação na Jardim e Casa",
+    "keywords": ["solicitação", "acompanhar", "protocolo", "pedido"],
+    "content": "Dados fictícios para homologação. Para acompanhar uma solicitação na Jardim e Casa, entre no portal da empresa, abra a seção Atendimento e selecione Consultar protocolo. Informe o protocolo e pressione Consultar. O andamento aparece no campo Etapa atual.",
+    "suggestions": []
+  }
+]

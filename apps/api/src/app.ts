@@ -1,6 +1,9 @@
 import { Database } from './db/database.js'
+import { createPostgresKnowledgeSearch } from './db/knowledge.js'
 import { ChatStore } from './db/store.js'
 import { registerWidgetRoutes } from './widget-routes.js'
+import { registerAdminRoutes } from './admin-routes.js'
+import { AdminSessionStore } from './db/admin-sessions.js'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { registerEmbed, type EmbedOptions } from './embed.js'
 import { registerChat, type ChatOptions } from './ia/chat.js'
@@ -9,6 +12,7 @@ type BuildAppOptions = EmbedOptions & ChatOptions & {
   sessionIssuanceLimit?: number
   database?: Database
   logger?: boolean
+  adminOrigin?: string
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -23,9 +27,16 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     app.addHook('onReady', () => database.ready())
     if (!options.database) app.addHook('onClose', () => database.close())
     registerWidgetRoutes(app, store!)
+    registerAdminRoutes(app, new AdminSessionStore(database), {
+      production,
+      origin: options.adminOrigin ?? (process.env.ADMIN_ORIGIN?.trim() || undefined),
+    })
   }
   registerEmbed(app, { ...options, ...(store ? { installationLookup: id => store.installation(id) } : {}) })
-  if (!production) registerChat(app, options)
+  if (!production) registerChat(app, {
+    ...(database ? { knowledgeSearch: createPostgresKnowledgeSearch(database) } : {}),
+    ...options,
+  })
 
   app.get('/api/health', async (_request,reply) => {
     if (database) {

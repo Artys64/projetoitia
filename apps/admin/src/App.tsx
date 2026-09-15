@@ -1,8 +1,8 @@
 import { Chatbot } from './tela/Chatbot'
-import { HostPage } from './tela/HostPage'
+import { KnowledgePage } from './tela/KnowledgePage'
 
 export function App() {
   const path = window.location.pathname.replace(/\/+$/, '') || '/'
 
-  return path === '/chatbot' ? <Chatbot /> : <HostPage />
+  return path === '/chatbot' ? <Chatbot /> : <KnowledgePage />
 }

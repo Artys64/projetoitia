@@ -52,3 +52,31 @@ A qualidade **não foi considerada aprovada**: na rodada final, a resposta de se
 - Backup/restauração em ambiente separado, alertas, retenção/exclusão, responsável operacional, RPO/RTO e orçamento. Reinício do banco local não substitui restauração de backup.
 
 A entrega comprova o fluxo técnico local e prepara a homologação; não declara o MVP completo nem o piloto pronto para produção.
+
+## Atualização — Etapa 3 da qualidade da Nora
+
+Em 14/09/2026, worker e chat de desenvolvimento passaram a compartilhar geração, verificação estruturada e política de publicação. A migração aditiva `002_response_verification.sql` registra auditoria por tentativa com RLS. Sugestões não verificadas foram retiradas das respostas e o modo sem LLM passou a se identificar como demonstração. Os resultados históricos da avaliação Groq acima não foram substituídos por resultados simulados.
+
+| Verificação desta atualização | Resultado |
+|---|---|
+| `npm run check` e `npm run build` | Aprovados em todos os workspaces |
+| `npm test` | 59 testes de API, 3 de contratos e 8 do corpus: 70 aprovados |
+| `npm run test:db` | 23 cenários + 2 agregadores: 25 testes aprovados |
+| Tipagem isolada dos novos testes de integração/API e servidor simulado | Aprovada |
+| Chat em Chromium, Firefox e WebKit, desktop e móvel | 36/36 aprovados em 2,1 min |
+
+Após o build, o comando de navegador executado no ambiente local foi:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/tmp/support-hub-browsers PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1 npx playwright test --config playwright.chat.config.ts
+```
+
+O relatório desta rodada está em `test-results/chat-report.json`. Em um ambiente com navegadores e dependências instalados normalmente, usar `npm run test:chat`.
+
+Os testes de banco acrescentam publicação e auditoria atômicas, alternativa literal, erro e incerteza do verificador, retry idempotente com consumo das duas tentativas, mudança de fonte durante verificação, recuperação de lease e isolamento de resposta tardia do worker antigo. Também exercitam sessão e lease que expiram enquanto a transação aguarda bloqueio de uma fonte: o `INSERT` deve recusar a publicação mesmo após a autorização inicial.
+
+Ambiente: Node.js 26.5.1, PostgreSQL portátil 18.4 e Playwright 1.63.0. A primeira tentativa de iniciar os testes de banco encontrou links ausentes nas bibliotecas do pacote portátil; executar o próprio `scripts/hydrate-symlinks.js` de `@embedded-postgres/linux-x64` restaurou os links locais. A suíte passou após esse ajuste, sem instalar pacotes no sistema.
+
+No navegador, o teste novo de alternativa literal inicialmente incluiu o rótulo “Nora” na comparação de texto. O seletor foi corrigido para o parágrafo da mensagem; a resposta persistida já correspondia ao trecho esperado. As capturas em `test-results/chat/` mostram o trecho literal após recarga e o estado de erro recuperável, sem rascunho bloqueado. Os mocks passam pelo fluxo real de ferramentas e verificação, mas seus pareceres são fixtures e não medem qualidade semântica.
+
+Nenhuma nova chamada Groq, migração remota ou implantação nesta atualização. Antes de iniciar o worker atualizado em um banco existente, aplicar `npm run db -- migrate`. A avaliação comparativa com orçamento definido e revisão humana continua pendente na Etapa 4 do [plano](plano-qualidade-respostas-nora.md).

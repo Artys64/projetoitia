@@ -3,9 +3,15 @@ import { buildApp } from '../src/app.js'
 import { ChatWorker } from '../src/db/worker.js'
 const fixture=await testDatabase()
 const app=buildApp({database:fixture.db,logger:false,sessionIssuanceLimit:200})
+const failedGenerations=new Set<string>()
 const worker=new ChatWorker(fixture.db,async input=>{
   await new Promise(resolve=>setTimeout(resolve,500))
-  if(input.messages.at(-1)?.content==='falhar provedor')throw new Error('simulated')
+  const question=input.messages.at(-1)?.content??''
+  if(question==='falhar provedor')throw new Error('simulated')
+  if(question.startsWith('falhar geração')&&!failedGenerations.has(question)) {
+    failedGenerations.add(question)
+    throw new Error('simulated')
+  }
   return fakeGenerate(input)
 })
 let stopping=false

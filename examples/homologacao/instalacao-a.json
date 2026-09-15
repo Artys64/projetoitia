@@ -1,0 +1,12 @@
+{
+  "installationId": "inst_hml_a",
+  "companyId": "hml_a",
+  "name": "Aurora Studio — Homologação",
+  "greeting": "Olá! Este é o atendimento de teste da Aurora Studio.",
+  "color": "#284e78",
+  "allowedOrigins": [
+    "https://mille-kappa.vercel.app",
+    "https://blanket-thinks-purple-remained.trycloudflare.com"
+  ],
+  "active": true
+}

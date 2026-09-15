@@ -76,7 +76,7 @@ Copie `apps/api/.env.example` para `apps/api/.env` caso queira alterar a porta o
 
 ## Testar com a Groq
 
-Com a Groq, a Nora interpreta o histórico e decide se responde diretamente, pede esclarecimento ou consulta artigos publicados pela ferramenta `searchKnowledge`. Sem chave, funciona apenas como busca textual e mostra o primeiro trecho encontrado. Para ativar o GPT-OSS 20B pela Groq:
+Com a Groq, a Nora interpreta o histórico e decide se consulta artigos publicados pela ferramenta `searchKnowledge`. Sem chave, a busca textual mostra o primeiro trecho com um aviso explícito de demonstração sem avaliação de pertinência. Para ativar o GPT-OSS 20B pela Groq:
 
 1. Crie uma chave no [GroqCloud Console](https://console.groq.com/keys).
 2. Copie `apps/api/.env.example` para `apps/api/.env.local`.
@@ -116,7 +116,9 @@ Uma busca sem resultados é devolvida ao modelo, que pode reformular a consulta,
 
 As sugestões vêm do primeiro trecho recuperado; sem trechos, a resposta gerada retorna uma lista vazia. Falhas de busca retornam 503 e falhas de geração retornam 502. Sem chave (ou com `useLlm: false`), permanece o modo de busca literal: ele usa a última pergunta, acrescenta a anterior em continuações explícitas e retorna uma mensagem fixa quando não encontra trechos. Esse modo não interpreta respostas breves como o modelo.
 
-Os logs de sucesso registram IDs e versões das fontes selecionadas, versão do prompt, resultado da execução e, nas gerações, modelo, número de buscas/etapas e uso total de tokens de todas as etapas. O conteúdo das perguntas, consultas e artigos não é incluído explicitamente nesses logs de sucesso. Os testes com provedor simulado validam o histórico, a execução das ferramentas, a filtragem por empresa/publicação, consultas vazias, limites e erros. A qualidade da interpretação precisa também de avaliação com o modelo real.
+O fluxo compartilhado gera a resposta em uma única chamada de modelo, usando os trechos recuperados da base como contexto. A geração tem prazo máximo de 20 segundos e os retries automáticos do SDK estão desativados.
+
+Logs e auditoria registram referências, versão do prompt, modelo, duração e uso da geração. Perguntas e respostas não entram na auditoria. O worker persiste cada tentativa em `ai_run_attempts`, incluindo novas tentativas e conclusões tardias de leases expiradas.
 
 Para testar no chat existente, pergunte “Esqueci minha senha”, “Quais são os planos?” e uma pergunta fora da base. Teste também uma resposta curta à pergunta da Nora, um agradecimento e uma recusa. O comportamento depende do histórico: “não” após uma oferta de ajuda pode encerrar a conversa; após uma pergunta sobre recebimento de e-mail pode levar à consulta desse problema. Também é possível testar diretamente:
 
@@ -128,7 +130,7 @@ curl http://localhost:3000/api/chat \
 
 Esta etapa atende à demonstração de uma única empresa: `KNOWLEDGE_COMPANY_ID` é definido no servidor (padrão `support-hub`), nunca pelo corpo da requisição. Use apenas conhecimento público nesse endpoint, que ainda não tem autenticação. A filtragem por empresa na busca não substitui autenticação e autorização. Esse endpoint legado atende ao chat de desenvolvimento em `/chatbot`. Para o widget persistente, use as rotas autenticadas descritas abaixo.
 
-O índice permanece como uma fotografia do arquivo até reiniciar o processo; despublicar exige reiniciar todas as instâncias. Gestão de artigos pelo painel, atualização em tempo real, fontes clicáveis, persistência de auditoria e resolução de empresa por sessão autenticada ficam para próximas etapas. Para migrar a recuperação para PostgreSQL, implemente `KnowledgeSearch` em `apps/api/src/ia/knowledge/search.ts`, mantendo a filtragem de empresa/publicação e o contrato de retorno. Esse modo legado usa JSON e não usa embeddings. O worker do widget persistente consulta os artigos no PostgreSQL.
+Sem `DATABASE_URL`, o chat de desenvolvimento usa a base JSON e o índice permanece como uma fotografia do arquivo até reiniciar o processo; despublicar exige reiniciar todas as instâncias. Com `DATABASE_URL`, ele consulta no PostgreSQL os artigos publicados da empresa definida por `KNOWLEDGE_COMPANY_ID`. Esse modo não usa embeddings. O worker do widget persistente também consulta os artigos no PostgreSQL, resolve a empresa pela sessão e revalida versões antes do commit; sua auditoria é persistida por tentativa. Gestão de artigos pelo painel e fontes clicáveis permanecem pendentes.
 
 ## Instalação por snippet (demonstração local)
 
@@ -137,14 +139,54 @@ npm install
 npm run demo
 ```
 
-Esse comando compila contratos, loader, widget, API e painel e inicia dois servidores com portas fixas:
+Esse comando carrega `apps/api/.env` e `apps/api/.env.local`, compila o projeto,
+prepara as duas instalações de demonstração no banco e inicia API, worker da Nora
+e site hospedeiro. Requer `DATABASE_URL`, `MIGRATION_DATABASE_URL` e
+`GROQ_API_KEY`, com o banco já migrado e provisionado conforme a
+[configuração do chat persistente](docs/operacao-chat-persistente.md).
+Se faltar configuração, houver migração pendente ou alguma porta estiver ocupada, o comando informa o
+problema e encerra antes de abrir uma demonstração com chat desabilitado.
+
+Endereços com portas fixas (independentemente de `PORT` no `.env`):
 
 - Produto/API: `http://localhost:3000`.
 - Host externo A: `http://localhost:4174/a.html` (`inst_demo_a`, Aurora Studio).
 - Host externo B: `http://localhost:4174/b.html` (`inst_demo_b`, Jardim & Casa).
 - Comparação sem snippet: `http://localhost:4174/without.html`.
 
+Abra **Mensagens → Nova conversa**, digite **Qual é o horário de atendimento?**
+e clique em **Enviar**. A Nora consulta um artigo fictício próprio de cada empresa
+e responde usando a Groq; as chamadas consomem a cota configurada. Aurora atende
+de segunda a sexta, 9h–18h; Jardim & Casa, de terça a sábado, 8h–16h (Brasília).
+O histórico fica salvo no banco e pode ser retomado após recarregar a página.
+Reexecutar o comando preserva conversas e não copia conhecimento de outras empresas.
+
+Para visualizar apenas layout e snippet sem banco nem IA, use `npm run demo:visual`.
+Nesse modo, a aba Mensagens informa que o chat está indisponível.
+
 O painel e seu chatbot continuam disponíveis com `npm run dev` em `http://localhost:5173` e `/chatbot`. Não execute `dev` e `demo` juntos: ambos usam a porta 3000. `npm run build:embed` recompila somente os contratos e os recursos do snippet; recarregue a página após editar loader/widget.
+
+### Base de conhecimento no painel
+
+Com o PostgreSQL configurado, a página inicial do painel permite criar textos e
+importar arquivos `.md` ou `.txt` em UTF-8. O arquivo pode ter até 1 MiB e o
+conteúdo, até 200.000 caracteres. Salvar mantém um rascunho separado; somente a
+ação **Publicar** troca a versão consultada pela Nora. Também é possível
+despublicar um conteúdo sem apagar seu rascunho.
+
+Prepare o acesso de uma empresa pelo procedimento controlado:
+
+```bash
+npm run db -- migrate
+npm run db -- provision
+npm run db -- admin-session company_a
+```
+
+O último comando mostra uma chave opaca com validade de sete dias. Cole essa
+chave na tela de entrada do painel. A sessão fica em cookie `HttpOnly`, e todas
+as leituras, edições e publicações são resolvidas pela empresa da sessão, não por
+um identificador enviado pela interface. Configure `ADMIN_ORIGIN` com a origem
+exata do painel; em produção ela deve usar HTTPS.
 
 O host é HTML independente: não importa componentes nem depende do proxy Vite. Para instalar na origem local autorizada, basta:
 
@@ -211,9 +253,15 @@ Resultados e limitações desta entrega: [verificação do snippet](docs/verific
 
 ## Chat persistente no widget
 
+Para incorporar no Mille em `http://localhost:3000`, use a
+[configuração local em porta separada](examples/local/README.md). O comando
+`npm run dev:widget` inicia API na porta 3100 e worker, sem abrir o painel.
+
 Implementação com PostgreSQL, sessões opacas, histórico paginado, mensagens idempotentes e worker separado para a Nora. A instalação por snippet permanece a mesma. A resposta continua em processamento mesmo após fechar o widget e pode ser retomada no mesmo site/navegador quando o armazenamento é permitido.
 
 Consulte [configuração local, cadastro de instalações, Render e operação](docs/operacao-chat-persistente.md). O `render.yaml` está preparado para homologação e ainda não foi aplicado. API de produção exige `DATABASE_URL`, serve apenas instalações cadastradas e desabilita `/api/chat`; a chave Groq fica no worker.
+
+Para testar sem cartão nem contratação de hospedagem, siga a [homologação em máquina local com HTTPS temporário](docs/homologacao-sem-cartao.md). O banco usa `compose.homologacao.yaml`; API e worker continuam separados. Essa opção exige manter a máquina ligada durante os testes.
 
 ```bash
 npm run db -- migrate

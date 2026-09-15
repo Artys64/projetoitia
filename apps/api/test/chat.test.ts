@@ -83,6 +83,13 @@ test('PostgreSQL real: isolamento, idempotência, recuperação, publicação e 
     const page=await app.inject({method:'GET',url:`/api/widget/conversations/${conversation.id}/messages`,headers});assert.equal(page.statusCode,200);assert.equal(page.headers['cache-control'],'no-store');assert.ok(!page.body.includes(digest(a1)))
     assert.equal((await app.inject({method:'GET',url:`/api/widget/conversations/${conversation.id}/messages?limit=1000`,headers})).statusCode,400)
   })
+  await t.test('chat de desenvolvimento usa os artigos publicados do PostgreSQL',async()=>{
+    const app=buildApp({database:db,logger:false,useLlm:false,knowledgeCompanyId:'company_b'});t.after(()=>app.close())
+    const response=await app.inject({method:'POST',url:'/api/chat',payload:{message:'Como alterar minha senha?'}})
+    assert.equal(response.statusCode,200)
+    assert.match(response.json().reply,/Instruções de senha exclusivas da company_b/)
+    assert.doesNotMatch(response.json().reply,/company_a/)
+  })
   await t.test('conversa fechada durante geração não publica resposta; recuperação tem limite de três tentativas',async()=>{
     const token=await session('inst_demo_b'),c=await store.createConversation(token,randomUUID())
     await store.send(token,c.id,randomUUID(),'senha')

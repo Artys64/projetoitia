@@ -1,0 +1,9 @@
+{
+  "installationId": "inst_local_mille",
+  "companyId": "hml_a",
+  "name": "Aurora Studio — Teste local",
+  "greeting": "Olá! Este é o atendimento de teste da Aurora Studio.",
+  "color": "#284e78",
+  "allowedOrigins": ["http://localhost:3000"],
+  "active": true
+}

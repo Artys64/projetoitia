@@ -1,6 +1,7 @@
 import { validateArticles, type Article } from './repository.js'
 
 export type SearchHit = {
+  companyId: string
   articleId: string
   version: number
   title: string
@@ -49,7 +50,7 @@ export function createTextSearch(articles: Article[]): KnowledgeSearch {
       titleTokens: tokens(article.title),
       keywordTokens: tokens(article.keywords.join(' ')),
       bodyTokens: tokens(text),
-      hit: { articleId: article.id, version: article.version, title: article.title, chunk, text, suggestions: article.suggestions },
+      hit: { companyId: article.companyId, articleId: article.id, version: article.version, title: article.title, chunk, text, suggestions: article.suggestions },
     })))
 
   return async (query, companyId) => {
