@@ -7,12 +7,15 @@ import { AdminSessionStore } from './db/admin-sessions.js'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { registerEmbed, type EmbedOptions } from './embed.js'
 import { registerChat, type ChatOptions } from './ia/chat.js'
+import { createEmbeddingProvider } from './ia/embeddings/local.js'
+import type { EmbeddingProvider } from './ia/embeddings/provider.js'
 
 type BuildAppOptions = EmbedOptions & ChatOptions & {
   sessionIssuanceLimit?: number
   database?: Database
   logger?: boolean
   adminOrigin?: string
+  embeddingProvider?: EmbeddingProvider
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -34,7 +37,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   }
   registerEmbed(app, { ...options, ...(store ? { installationLookup: id => store.installation(id) } : {}) })
   if (!production) registerChat(app, {
-    ...(database ? { knowledgeSearch: createPostgresKnowledgeSearch(database) } : {}),
+    ...(database ? { knowledgeSearch: createPostgresKnowledgeSearch(
+      database, options.embeddingProvider ?? createEmbeddingProvider(),
+    ) } : {}),
     ...options,
   })
 

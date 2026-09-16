@@ -65,7 +65,10 @@ export async function generateNoraDraft(options: NoraOptions) {
           searches++
           try {
             requireTime(deadlineAt)
-            const retrieved = buildContext(await options.search(query, options.companyId))
+            const searchDeadline = Math.min(deadlineAt, Date.now() + 3_000)
+            const hits = await withinDeadline(searchDeadline, signal =>
+              options.search(query, options.companyId, { signal, deadlineAt: searchDeadline }))
+            const retrieved = buildContext(hits)
             evidence = collectEvidence(options.companyId, retrieved.sources, evidence)
             for (const source of retrieved.sources) {
               if (!sources.some(previous => previous.companyId === source.companyId && previous.articleId === source.articleId &&

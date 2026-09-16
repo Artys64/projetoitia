@@ -86,6 +86,10 @@
 .segmented button.active { color: #1e453b; background: #fff; box-shadow: 0 1px 5px rgb(29 66 57 / 10%); }
 .text-button { padding: 7px 5px; border: 0; color: #667a73; background: transparent; cursor: pointer; font-size: .8rem; font-weight: 700; }
 .text-button.danger:hover { color: #ad3e3e; }
+.delete-button { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 10px; border: 1px solid #e3c9c9; border-radius: 8px; color: #9b3939; background: #fffafa; cursor: pointer; font-size: .8rem; font-weight: 750; }
+.delete-button:hover { border-color: #c98787; background: #fff1f1; }
+.delete-button:disabled { opacity: .5; cursor: not-allowed; }
+.delete-button svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .notice { margin: 14px 22px 0; padding: 10px 12px; border-radius: 8px; font-size: .82rem; line-height: 1.4; }
 .notice.success { color: #155f4c; background: #e1f3ec; }
 .notice.error { color: #913939; background: #fde9e9; }

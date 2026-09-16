@@ -9,6 +9,8 @@ export async function importInstallation(db:Database,installation:Installation,p
   await db.transaction(installation.companyId,async sql=>{
     await sql.query('INSERT INTO tenants(id,name) VALUES($1,$2) ON CONFLICT(id) DO NOTHING',[installation.companyId,installation.name])
     await sql.query('SELECT id FROM tenants WHERE id=$1 FOR UPDATE',[installation.companyId])
+    await sql.query(`INSERT INTO knowledge_retrieval_configs(tenant_id,profile_id)
+      VALUES($1,'multilingual-e5-small-v1') ON CONFLICT(tenant_id) DO NOTHING`, [installation.companyId])
     const previous=(await sql.query('SELECT tenant_id FROM installations WHERE id=$1',[installation.installationId])).rows[0]
     if(previous&&previous.tenant_id!==installation.companyId) throw new Error('Instalação não pode mudar de empresa')
     await sql.query(`INSERT INTO installations(id,tenant_id,name,greeting,color,allowed_origins,active) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(id) DO UPDATE SET name=excluded.name,greeting=excluded.greeting,color=excluded.color,allowed_origins=excluded.allowed_origins,active=excluded.active`,[installation.installationId,installation.companyId,installation.name,installation.greeting,installation.color,JSON.stringify(installation.allowedOrigins),installation.active])
@@ -21,13 +23,64 @@ export async function importArticles(db:Database,value:unknown) {
     if(!exists.rowCount) throw new Error(`Cadastre a empresa antes dos artigos: ${tenant}`)
     for(const a of articles.filter(a=>a.companyId===tenant)) {
       await sql.query('INSERT INTO articles(tenant_id,id) VALUES($1,$2) ON CONFLICT DO NOTHING',[tenant,a.id])
+      const article=(await sql.query('SELECT * FROM articles WHERE tenant_id=$1 AND id=$2 FOR UPDATE',[tenant,a.id])).rows[0]
       const previous=(await sql.query('SELECT * FROM article_versions WHERE tenant_id=$1 AND article_id=$2 AND version=$3',[tenant,a.id,a.version])).rows[0]
       if(previous&&(previous.title!==a.title||previous.content!==a.content||JSON.stringify(previous.keywords)!==JSON.stringify(a.keywords)||JSON.stringify(previous.suggestions)!==JSON.stringify(a.suggestions))) throw new Error(`Versão imutável: incremente version de ${a.id}`)
       await sql.query('INSERT INTO article_versions(tenant_id,article_id,version,title,content,keywords,suggestions) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING',[tenant,a.id,a.version,a.title,a.content,JSON.stringify(a.keywords),JSON.stringify(a.suggestions)])
-      await sql.query('UPDATE articles SET published_version=$3 WHERE tenant_id=$1 AND id=$2',[tenant,a.id,a.status==='published'?a.version:null])
+      if(a.status==='published') {
+        const existing=await sql.query(`SELECT id FROM knowledge_publications
+          WHERE tenant_id=$1 AND article_id=$2 AND article_version=$3`,[tenant,a.id,a.version])
+        if(!existing.rowCount) {
+          const publicationId=randomUUID()
+          await sql.query(`INSERT INTO knowledge_publications(tenant_id,id,article_id,article_version,previous_published_version)
+            VALUES($1,$2,$3,$4,$5)`,[tenant,publicationId,a.id,a.version,article.published_version])
+          await sql.query(`INSERT INTO knowledge_index_jobs(tenant_id,id,publication_id)
+            VALUES($1,$2,$3)`,[tenant,randomUUID(),publicationId])
+        }
+      } else {
+        await sql.query(`UPDATE knowledge_publications SET state='cancelled',error_code='unpublished',updated_at=now()
+          WHERE tenant_id=$1 AND article_id=$2 AND state IN ('queued','indexing','ready')`,[tenant,a.id])
+        await sql.query(`UPDATE knowledge_index_jobs SET state='cancelled',error_code='unpublished',lease_until=NULL,updated_at=now()
+          WHERE tenant_id=$1 AND publication_id IN
+            (SELECT id FROM knowledge_publications WHERE tenant_id=$1 AND article_id=$2)
+            AND state IN ('queued','running')`,[tenant,a.id])
+        await sql.query('UPDATE articles SET published_version=NULL,active_index_set_id=NULL WHERE tenant_id=$1 AND id=$2',[tenant,a.id])
+      }
     }
   })
   return articles.length
+}
+
+/** Queues published versions that predate the indexed RAG schema. Idempotent per article version. */
+export async function queueKnowledgeBackfill(db: Database) {
+  const tenants = (await db.pool.query('SELECT id FROM tenants ORDER BY id')).rows
+  let queued = 0
+  for (const { id: tenant } of tenants) await db.transaction(tenant, async sql => {
+    await sql.query(`INSERT INTO knowledge_retrieval_configs(tenant_id,profile_id)
+      VALUES($1,'multilingual-e5-small-v1') ON CONFLICT(tenant_id) DO NOTHING`, [tenant])
+    const articles = (await sql.query(`SELECT id,published_version FROM articles
+      WHERE tenant_id=$1 AND published_version IS NOT NULL AND active_index_set_id IS NULL
+      ORDER BY id FOR UPDATE`, [tenant])).rows
+    for (const article of articles) {
+      let publication = (await sql.query(`SELECT id,state FROM knowledge_publications
+        WHERE tenant_id=$1 AND article_id=$2 AND article_version=$3`,
+      [tenant, article.id, article.published_version])).rows[0]
+      if (!publication) {
+        publication = { id: randomUUID(), state: 'queued' }
+        await sql.query(`INSERT INTO knowledge_publications(tenant_id,id,article_id,article_version,previous_published_version)
+          VALUES($1,$2,$3,$4,$4)`, [tenant, publication.id, article.id, article.published_version])
+      }
+      if (!['queued','indexing'].includes(publication.state)) continue
+      const job = await sql.query(`SELECT id FROM knowledge_index_jobs
+        WHERE tenant_id=$1 AND publication_id=$2`, [tenant, publication.id])
+      if (!job.rowCount) {
+        await sql.query(`INSERT INTO knowledge_index_jobs(tenant_id,id,publication_id)
+          VALUES($1,$2,$3)`, [tenant, randomUUID(), publication.id])
+        queued++
+      }
+    }
+  })
+  return queued
 }
 
 /** Creates a revocable first-party admin session for a single tenant. */
@@ -63,11 +116,16 @@ export async function provisionRuntime(db:Database,password:string) {
   await db.pool.query('GRANT UPDATE(name) ON tenants,installations TO support_hub_app')
   await db.pool.query('GRANT SELECT,INSERT,UPDATE,DELETE ON visitor_sessions,conversations,messages,ai_runs,jobs,idempotency_keys,usage_buckets,session_rate_buckets TO support_hub_app')
   await db.pool.query('GRANT SELECT,INSERT,UPDATE ON ai_run_attempts TO support_hub_app')
-  await db.pool.query('GRANT SELECT ON articles,article_versions TO support_hub_app')
+  await db.pool.query('GRANT SELECT,DELETE ON articles,article_versions TO support_hub_app')
   await db.pool.query('GRANT SELECT ON admin_users,admin_memberships,admin_sessions TO support_hub_app')
   await db.pool.query('GRANT UPDATE(revoked_at) ON admin_sessions TO support_hub_app')
   await db.pool.query('GRANT SELECT,INSERT,UPDATE,DELETE ON article_drafts TO support_hub_app')
   await db.pool.query('GRANT INSERT ON articles,article_versions TO support_hub_app')
   await db.pool.query('GRANT UPDATE(published_version) ON articles TO support_hub_app')
   await db.pool.query('GRANT UPDATE(id) ON articles TO support_hub_app')
+  await db.pool.query('GRANT SELECT ON embedding_profiles TO support_hub_app')
+  await db.pool.query(`GRANT SELECT,INSERT,UPDATE,DELETE ON knowledge_retrieval_configs,
+    knowledge_publications,knowledge_index_sets,knowledge_chunks,knowledge_embeddings,knowledge_index_jobs
+    TO support_hub_app`)
+  await db.pool.query('GRANT UPDATE(active_index_set_id) ON articles TO support_hub_app')
 }

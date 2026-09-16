@@ -9,9 +9,15 @@ export type SearchHit = {
   text: string
   suggestions: string[]
   score: number
+  indexSetId?: string
+  literalHash?: string
 }
 
-export type KnowledgeSearch = (query: string, companyId: string) => Promise<SearchHit[]>
+export type KnowledgeSearch = (
+  query: string,
+  companyId: string,
+  options?: { signal?: AbortSignal; deadlineAt?: number },
+) => Promise<SearchHit[]>
 
 const stopwords = new Set('a o as os um uma de da do das dos e em no na nos nas ao aos que qual quais como para por com se meu minha sua seu eu voce nao sim foi ser esta esse essa isso isto ele ela aqui ainda sobre gostaria quero saber pode posso favor porfavor me tem tenho quanto'.split(' '))
 

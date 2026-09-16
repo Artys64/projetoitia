@@ -2,6 +2,8 @@
 
 Data: 15/09/2026. Status: proposta de implementação baseada no código local inspecionado nesta data.
 
+> Escopo atualizado: o usuário decidiu incluir pgvector, embeddings e recuperação híbrida. O [plano de RAG completo](plano-pgvector-rag-completo.md) prevalece sobre o adiamento da busca vetorial e detalha a nova ordem de implementação. As metas de isolamento e qualidade deste documento continuam aplicáveis.
+
 > Prioridade atualizada pelo usuário em 15/09/2026: importar documentos e gerenciar a base pelo painel, começando por texto e Markdown; PDF e DOCX ficam para depois. O [plano do painel e da importação](plano-base-conhecimento-painel.md) prevalece sobre a ordem de entrega abaixo e sobre o adiamento da edição pelo painel. Os requisitos de isolamento, avaliação e publicação deste documento continuam aplicáveis.
 
 ## 1. Objetivo e direção

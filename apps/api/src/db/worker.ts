@@ -5,6 +5,8 @@ import { PROMPT_VERSION } from '../ia/prompts/nora.js'
 import type { KnowledgeSearch } from '../ia/knowledge/search.js'
 import { Database, type Sql } from './database.js'
 import { createPostgresKnowledgeSearch } from './knowledge.js'
+import { createEmbeddingProvider } from '../ia/embeddings/local.js'
+import type { EmbeddingProvider } from '../ia/embeddings/provider.js'
 
 export type Generation = GeneratedResponse
 export type { Generate } from '../ia/runtime.js'
@@ -14,8 +16,8 @@ const LEASE_SECONDS=60
 export class ChatWorker {
   private nextTenant=0
   readonly search:KnowledgeSearch
-  constructor(readonly db:Database, readonly generate:Generate = createGenerator()) {
-    this.search=createPostgresKnowledgeSearch(db)
+  constructor(readonly db:Database, readonly generate:Generate = createGenerator(), embeddings:EmbeddingProvider = createEmbeddingProvider()) {
+    this.search=createPostgresKnowledgeSearch(db,embeddings)
   }
   async claim():Promise<Claim|null> {
     const tenants=(await this.db.pool.query('SELECT id FROM tenants ORDER BY id')).rows
@@ -93,7 +95,7 @@ export class ChatWorker {
         const tenant=(await sql.query('SELECT active FROM tenants WHERE id=$1 FOR UPDATE',[claim.tenantId])).rows[0]
         const c=(await sql.query('SELECT * FROM conversations WHERE id=$1 FOR UPDATE',[claim.conversationId])).rows[0]
         if(!await this.owned(sql,claim)) {await this.recordAttempt(sql,claim,'expired',started,response,'lease_expired');return}
-        const sources=response.status==='publish'?response.sources.map(({articleId,version,chunk})=>({articleId,version,chunk})):[]
+        const sources=response.status==='publish'?response.sources.map(({articleId,version,chunk,title,indexSetId,literalHash})=>({articleId,version,chunk,title,indexSetId,literalHash})):[]
         await sql.query('UPDATE ai_runs SET model=$2,prompt_version=$3,sources=$4,usage=$5,duration_ms=$6 WHERE id=$1',[claim.runId,response.audit.generation.model,response.audit.generation.promptVersion,JSON.stringify(sources),JSON.stringify(response.usage),Date.now()-started])
         const block=async(code:string)=>{
           await this.recordAttempt(sql,claim,'blocked',started,response,code)
@@ -109,18 +111,24 @@ export class ChatWorker {
         const checked=new Set<string>()
         for(const source of references) {
           if(source.companyId!==claim.tenantId) {await block('source_changed');return}
-          const identity=`${source.articleId}@${source.version}`
+          const identity=`${source.articleId}@${source.version}~${source.indexSetId??''}#${source.chunk}`
           if(checked.has(identity)) continue
           checked.add(identity)
-          const found=await sql.query('SELECT published_version FROM articles WHERE tenant_id=$1 AND id=$2 FOR SHARE',[claim.tenantId,source.articleId])
+          const found=source.indexSetId&&source.literalHash
+            ? await sql.query(`SELECT a.published_version FROM articles a
+                JOIN knowledge_chunks c ON c.tenant_id=a.tenant_id AND c.index_set_id=a.active_index_set_id
+                  AND c.article_id=a.id AND c.chunk_index=$4
+              WHERE a.tenant_id=$1 AND a.id=$2 AND a.active_index_set_id=$3 AND c.literal_hash=$5 FOR SHARE OF a`,
+            [claim.tenantId,source.articleId,source.indexSetId,source.chunk,source.literalHash])
+            : await sql.query('SELECT published_version FROM articles WHERE tenant_id=$1 AND id=$2 FOR SHARE',[claim.tenantId,source.articleId])
           if(found.rows[0]?.published_version!==source.version) {await block('source_changed');return}
         }
         // Row locks prevent revocation/version changes; clock-time conditions also catch TTL/lease expiry while waiting for locks.
-        const published=await sql.query(`INSERT INTO messages(id,tenant_id,conversation_id,sequence,role,content,ai_run_id)
-          SELECT $1,$2,$3,$4,'assistant',$5,$6
+        const published=await sql.query(`INSERT INTO messages(id,tenant_id,conversation_id,sequence,role,content,ai_run_id,sources)
+          SELECT $1,$2,$3,$4,'assistant',$5,$6,$10
           WHERE EXISTS(SELECT 1 FROM jobs j JOIN ai_runs r ON r.id=j.run_id WHERE j.run_id=$6 AND r.state='running' AND r.attempts=$7 AND j.lease_token=$8 AND j.lease_until>clock_timestamp())
             AND EXISTS(SELECT 1 FROM visitor_sessions WHERE id=$9 AND revoked_at IS NULL AND expires_at>clock_timestamp())`,
-          [randomUUID(),claim.tenantId,claim.conversationId,c.next_sequence,response.text,claim.runId,claim.attempt,claim.leaseToken,c.session_id])
+          [randomUUID(),claim.tenantId,claim.conversationId,c.next_sequence,response.text,claim.runId,claim.attempt,claim.leaseToken,c.session_id,JSON.stringify(sources)])
         if(!published.rowCount) {
           if(!await this.owned(sql,claim)) {await this.recordAttempt(sql,claim,'expired',started,response,'lease_expired');return}
           await block('conversation_unavailable');return

@@ -46,4 +46,5 @@ export const adminApi = {
   unpublish: (id: string) => request<KnowledgeItem>(`/knowledge/${id}/unpublish`, {
     method: 'POST', body: JSON.stringify({}),
   }),
+  delete: (id: string) => request<void>(`/knowledge/${id}`, { method: 'DELETE' }),
 }

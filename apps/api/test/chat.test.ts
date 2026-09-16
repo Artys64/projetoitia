@@ -11,7 +11,7 @@ import { buildApp } from '../src/app.js'
 
 test('PostgreSQL real: isolamento, idempotência, recuperação, publicação e API',async t=>{
   const fixture=await testDatabase();t.after(()=>fixture.close())
-  const {db,admin}=fixture,store=new ChatStore(db),worker=new ChatWorker(db,fakeGenerate)
+  const {db,admin,embeddings}=fixture,store=new ChatStore(db),worker=new ChatWorker(db,fakeGenerate,embeddings)
   const session=async(installation='inst_demo_a')=>(await store.createSession(installation,randomUUID())).token
   const a1=await session(),a2=await session(),b1=await session('inst_demo_b'),b2=await session('inst_demo_b')
   const key=randomUUID(),conversation=await store.createConversation(a1,key)
@@ -44,7 +44,7 @@ test('PostgreSQL real: isolamento, idempotência, recuperação, publicação e 
   await t.test('lease expirada: novo worker recupera e worker antigo não publica duas respostas',async()=>{
     const first=await worker.claim();assert.ok(first)
     await db.transaction('company_a',sql=>sql.query("UPDATE jobs SET lease_until=now()-interval '1 second' WHERE run_id=$1",[first.runId]))
-    const second=await new ChatWorker(db,fakeGenerate).claim();assert.ok(second);assert.equal(second.attempt,2)
+    const second=await new ChatWorker(db,fakeGenerate,embeddings).claim();assert.ok(second);assert.equal(second.attempt,2)
     await worker.execute(first)
     assert.equal((await store.messages(a1,conversation.id)).messages.length,1)
     await worker.execute(second);await worker.execute(second)
@@ -61,14 +61,14 @@ test('PostgreSQL real: isolamento, idempotência, recuperação, publicação e 
   await t.test('fontes despublicadas durante geração impedem a resposta',async()=>{
     await admin.pool.query("UPDATE ai_runs SET created_at=now()+interval '1 day' WHERE id=$1",[runId!])
     const next=await store.send(a1,conversation.id,randomUUID(),'Como alterar senha?')
-    const blocked=new ChatWorker(db,async input=>{const result=await fakeGenerate(input);await importArticles(admin,[{id:'senha',companyId:'company_a',version:1,status:'draft',title:'Alterar senha',keywords:['senha','acesso'],content:'Instruções de senha exclusivas da company_a.',suggestions:[]}]);return result})
+    const blocked=new ChatWorker(db,async input=>{const result=await fakeGenerate(input);await importArticles(admin,[{id:'senha',companyId:'company_a',version:1,status:'draft',title:'Alterar senha',keywords:['senha','acesso'],content:'Instruções de senha exclusivas da company_a.',suggestions:[]}]);return result},embeddings)
     await blocked.tick();const page=await store.messages(a1,conversation.id)
     assert.equal(page.run?.id,next.runId);assert.equal(page.run?.errorCode,'source_changed');assert.equal(page.messages.length,3);assert.equal(page.run.canRetry,false)
     assert.equal((await worker.search('senha','company_a')).length,0);assert.equal((await worker.search('senha','company_b')).length,1)
   })
   await t.test('falha do provedor preserva pergunta e retry é idempotente',async()=>{
     const c=await store.createConversation(b1,randomUUID());const sent=await store.send(b1,c.id,randomUUID(),'senha')
-    await new ChatWorker(db,async()=>{throw new Error('timeout')}).tick()
+    await new ChatWorker(db,async()=>{throw new Error('timeout')},embeddings).tick()
     assert.equal((await store.messages(b1,c.id)).run?.state,'failed')
     const k=randomUUID();assert.deepEqual(await store.retry(b1,c.id,sent.runId,k),await store.retry(b1,c.id,sent.runId,k))
     await worker.tick();assert.equal((await store.messages(b1,c.id)).messages.length,2)
@@ -84,7 +84,7 @@ test('PostgreSQL real: isolamento, idempotência, recuperação, publicação e 
     assert.equal((await app.inject({method:'GET',url:`/api/widget/conversations/${conversation.id}/messages?limit=1000`,headers})).statusCode,400)
   })
   await t.test('chat de desenvolvimento usa os artigos publicados do PostgreSQL',async()=>{
-    const app=buildApp({database:db,logger:false,useLlm:false,knowledgeCompanyId:'company_b'});t.after(()=>app.close())
+    const app=buildApp({database:db,logger:false,useLlm:false,knowledgeCompanyId:'company_b',embeddingProvider:embeddings});t.after(()=>app.close())
     const response=await app.inject({method:'POST',url:'/api/chat',payload:{message:'Como alterar minha senha?'}})
     assert.equal(response.statusCode,200)
     assert.match(response.json().reply,/Instruções de senha exclusivas da company_b/)
@@ -93,7 +93,7 @@ test('PostgreSQL real: isolamento, idempotência, recuperação, publicação e 
   await t.test('conversa fechada durante geração não publica resposta; recuperação tem limite de três tentativas',async()=>{
     const token=await session('inst_demo_b'),c=await store.createConversation(token,randomUUID())
     await store.send(token,c.id,randomUUID(),'senha')
-    const closing=new ChatWorker(db,async input=>{const result=await fakeGenerate(input);await admin.pool.query("UPDATE conversations SET state='closed' WHERE id=$1",[c.id]);return result})
+    const closing=new ChatWorker(db,async input=>{const result=await fakeGenerate(input);await admin.pool.query("UPDATE conversations SET state='closed' WHERE id=$1",[c.id]);return result},embeddings)
     await closing.tick();assert.equal((await store.messages(token,c.id)).messages.length,1)
     const d=await store.createConversation(token,randomUUID());const sent=await store.send(token,d.id,randomUUID(),'senha')
     for(let attempt=1;attempt<=3;attempt++){

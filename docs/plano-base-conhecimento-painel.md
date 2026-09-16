@@ -10,7 +10,7 @@ Requisito explícito do usuário: cada empresa possui seu próprio contexto. Doc
 
 Primeiro marco: um administrador entra na empresa, envia um documento, acompanha o processamento, revisa o texto, publica e confirma que a Nora encontra o conteúdo. Depois consegue editar, substituir e despublicar sem usar a CLI.
 
-Este plano altera a sequência do [plano geral de RAG](plano-implementacao-rag.md): autenticação, importação e edição entram no primeiro marco. A avaliação acompanha as entregas; o avaliador completo não bloqueia o início do painel. Embeddings continuam condicionados à medição da recuperação.
+Este plano altera a sequência do [plano geral de RAG](plano-implementacao-rag.md): autenticação, importação e edição entram no primeiro marco. A avaliação acompanha as entregas; o avaliador completo não bloqueia o início do painel. Por decisão posterior do usuário, embeddings e pgvector passam ao escopo principal, detalhado no [plano de RAG completo](plano-pgvector-rag-completo.md).
 
 Formatos confirmados pelo usuário: texto e Markdown primeiro; PDF e DOCX depois. A primeira versão aceita texto digitado/colado e arquivos `.txt` e `.md` em UTF-8. PDF e DOCX são uma entrega posterior; OCR, crawler e conectores exigirão escopo próprio.
 

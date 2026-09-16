@@ -3,7 +3,7 @@
 name: support-hub-homologacao
 services:
   db:
-    image: postgres:18.4
+    image: pgvector/pgvector:0.8.6-pg18-trixie
     environment:
       POSTGRES_DB: support_hub_homologacao
       POSTGRES_USER: support_hub_owner
@@ -18,5 +18,20 @@ services:
       timeout: 5s
       retries: 12
     stop_grace_period: 30s
+  embeddings:
+    build: ./services/embeddings-local
+    environment:
+      EMBEDDING_MODEL_PATH: /models/multilingual-e5-small
+      EMBEDDING_MODEL_REVISION: fd1525a9fd15316a2d503bf26ab031a61d056e98
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - ./models/multilingual-e5-small:/models/multilingual-e5-small:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=10)"]
+      interval: 10s
+      timeout: 15s
+      retries: 12
+      start_period: 60s
 volumes:
   postgres_data:

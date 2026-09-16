@@ -11,6 +11,9 @@ function Icon({ children }: { children: ReactNode }) {
 }
 
 function stateLabel(item: KnowledgeItem) {
+  if (item.publication?.state === 'queued') return 'Na fila'
+  if (item.publication?.state === 'indexing') return `Indexando ${item.publication.progress}%`
+  if (item.publication?.state === 'failed') return 'Falha na indexação'
   if (!item.publishedVersion) return 'Rascunho'
   if (item.hasUnpublishedChanges) return 'Alterações pendentes'
   return 'Publicado'
@@ -67,6 +70,12 @@ export function KnowledgePage() {
       })
     return () => controller.abort()
   }, [])
+
+  useEffect(() => {
+    if (phase !== 'ready' || !items.some(item => ['queued', 'indexing'].includes(item.publication?.state ?? ''))) return
+    const timer = window.setInterval(() => void loadItems().catch(() => undefined), 1500)
+    return () => window.clearInterval(timer)
+  }, [phase, items])
 
   const run = async (work: () => Promise<void>) => {
     setBusy(true)
@@ -131,7 +140,7 @@ export function KnowledgePage() {
     setForm(itemForm(published))
     setDirty(false)
     await loadItems()
-    setNotice({ tone: 'success', text: 'Conteúdo publicado e disponível para a Nora.' })
+    setNotice({ tone: 'success', text: 'Publicação solicitada. A versão atual continua ativa até a indexação terminar.' })
   })
 
   const unpublish = () => void run(async () => {
@@ -141,6 +150,18 @@ export function KnowledgePage() {
     await loadItems()
     setNotice({ tone: 'success', text: 'Conteúdo removido da base publicada.' })
   })
+
+  const deleteArticle = () => {
+    if (!form.id || !window.confirm(`Apagar permanentemente “${form.title}”? O rascunho e todas as versões publicadas serão excluídos.`)) return
+    void run(async () => {
+      await adminApi.delete(form.id!)
+      setForm(emptyForm())
+      setDirty(false)
+      setPreview(false)
+      await loadItems()
+      setNotice({ tone: 'success', text: 'Artigo apagado permanentemente.' })
+    })
+  }
 
   const importFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -237,7 +258,7 @@ export function KnowledgePage() {
             <div className="document-list">
               {items.length === 0 && <div className="empty-list"><Icon><path d="M5 3h10l4 4v14H5zM15 3v5h5M8 13h8M8 17h6" /></Icon><strong>A base está vazia</strong><span>Crie um texto ou importe um Markdown.</span></div>}
               {items.map(item => <button key={item.id} className={`document-row ${form.id === item.id ? 'selected' : ''}`} onClick={() => choose(item)}>
-                <span className={`status-pill ${item.publishedVersion ? item.hasUnpublishedChanges ? 'pending' : 'published' : 'draft'}`}>{stateLabel(item)}</span>
+                <span className={`status-pill ${item.publication?.state === 'failed' ? 'draft' : item.publication && ['queued','indexing'].includes(item.publication.state) ? 'pending' : item.publishedVersion ? item.hasUnpublishedChanges ? 'pending' : 'published' : 'draft'}`}>{stateLabel(item)}</span>
                 <strong>{item.title}</strong>
                 <small>{item.format === 'markdown' ? 'Markdown' : 'Texto'} · {formatDate(item.updatedAt)}</small>
               </button>)}
@@ -252,6 +273,10 @@ export function KnowledgePage() {
               </div>
               <div className="editor-actions">
                 {selected?.publishedVersion && <button className="text-button danger" onClick={unpublish} disabled={busy}>Despublicar</button>}
+                {selected && <button className="delete-button" onClick={deleteArticle} disabled={busy}>
+                  <Icon><path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6" /></Icon>
+                  Apagar
+                </button>}
                 <button className="secondary-button compact" onClick={save} disabled={busy || !dirty || !canSubmit}>{busy ? 'Salvando…' : 'Salvar rascunho'}</button>
                 <button className="publish-button" onClick={publish} disabled={busy || !canSubmit}>{busy ? 'Publicando…' : 'Publicar'}</button>
               </div>

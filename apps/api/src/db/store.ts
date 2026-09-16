@@ -112,7 +112,18 @@ export class ChatStore {
       const result=await sql.query('SELECT * FROM messages WHERE conversation_id=$1 AND sequence>$2 ORDER BY sequence LIMIT $3',[id,after,limit+1])
       const runs=await sql.query('SELECT r.* FROM ai_runs r JOIN messages m ON m.id=r.message_id WHERE r.conversation_id=$1 ORDER BY m.sequence DESC LIMIT 1',[id])
       const r=runs.rows[0],rows=result.rows.slice(0,limit)
-      return {messages:rows.map(m=>({id:m.id,sequence:m.sequence,role:m.role,content:m.content,createdAt:iso(m.created_at)})), nextCursor:result.rows.length>limit ? rows.at(-1)!.sequence:null,run:r?{id:r.id,state:r.state,errorCode:r.error_code,canRetry:r.state==='failed'&&r.attempts<3&&r.error_code!=='source_changed'}:null}
+      return {messages:rows.map(m=>({id:m.id,sequence:m.sequence,role:m.role,content:m.content,createdAt:iso(m.created_at),sources:m.sources??[]})), nextCursor:result.rows.length>limit ? rows.at(-1)!.sequence:null,run:r?{id:r.id,state:r.state,errorCode:r.error_code,canRetry:r.state==='failed'&&r.attempts<3&&r.error_code!=='source_changed'}:null}
+    })
+  }
+  async source(token:string,articleId:string,version:number) {
+    return this.authenticated(token,async(sql,s)=>{
+      const row=(await sql.query(`SELECT a.published_version,v.title,v.content FROM articles a
+        JOIN article_versions v ON v.tenant_id=a.tenant_id AND v.article_id=a.id AND v.version=a.published_version
+        WHERE a.tenant_id=$1 AND a.id=$2`,[s.tenant_id,articleId])).rows[0]
+      if(!row) throw missing()
+      return row.published_version===version
+        ? {status:'current' as const,title:row.title,content:row.content,version:row.published_version}
+        : {status:'updated' as const,title:row.title,content:null,version:row.published_version}
     })
   }
   async reserve(sql:Sql,s:Session) {

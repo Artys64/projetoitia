@@ -4,7 +4,7 @@ Implementação local de HTTP + consulta periódica. Ainda exige homologação H
 
 ## Executar com seu PostgreSQL
 
-Use Node 24.20.0 (`nvm use`) e `npm ci`. Banco PostgreSQL 18 recomendado para reproduzir a versão dos testes. Os testes não exigem Docker: `embedded-postgres` fornece os binários nativos de desenvolvimento; a aplicação usa apenas `pg` e um PostgreSQL externo. Se o gerenciador bloquear scripts de instalação, autorize o script de hidratação de links do pacote `@embedded-postgres` correspondente à plataforma e o build do `esbuild`.
+Use Node 24.20.0 (`nvm use`), `npm ci` e Docker. Banco PostgreSQL 18 com pgvector é obrigatório. A suíte de integração inicia um container isolado da imagem fixada em `pgvector/pgvector:0.8.6-pg18-trixie`; nunca a aponte para o banco operacional.
 
 No arquivo local `apps/api/.env.local`, configure:
 
@@ -12,6 +12,7 @@ No arquivo local `apps/api/.env.local`, configure:
 - `APP_DATABASE_PASSWORD`: senha aleatória com no mínimo 20 caracteres para `support_hub_app`.
 - `DATABASE_URL`: mesma conexão, com usuário `support_hub_app` e a senha acima; codifique caracteres especiais da senha na URL.
 - `GROQ_API_KEY`: chave da Groq para o worker (e chatbot legado em desenvolvimento).
+- `EMBEDDINGS_URL`: endpoint privado do serviço local, por exemplo `http://127.0.0.1:8090`.
 
 Não versione esse arquivo. Nunca execute os testes contra um banco do piloto.
 
@@ -22,7 +23,16 @@ npm run build
 npm run dev
 ```
 
-Em outro terminal, execute `npm run worker`. O worker de produção exige a chave Groq e nunca troca silenciosamente por uma resposta simulada. Para testar o embed, inicie também `npm run start -w @support-hub/demo-host`.
+Prepare os pesos na revisão fixada, suba o serviço local e depois execute `npm run worker` em outro terminal:
+
+```bash
+hf download intfloat/multilingual-e5-small \
+  --revision fd1525a9fd15316a2d503bf26ab031a61d056e98 \
+  --local-dir models/multilingual-e5-small
+docker compose --env-file .env.homologacao.db -f compose.homologacao.yaml up -d --wait
+```
+
+O worker de produção exige Groq e embeddings e nunca troca silenciosamente por respostas ou vetores simulados. Para testar o embed, inicie também `npm run start -w @support-hub/demo-host`.
 
 ## Cadastrar instalação e conhecimento
 
@@ -80,7 +90,7 @@ Limites iniciais conservadores, a revisar antes de dados reais:
 
 Reservas contam chamadas admitidas, incluindo novas tentativas e recuperação de lease; não são um teto monetário ou limite exato de tokens. Falhas não devolvem a reserva. Tokens efetivos ficam registrados na execução. É possível haver nova cobrança no provedor após crash; a resposta persistida é única.
 
-API, worker e importador bloqueiam a empresa primeiro para manter reservas e publicação consistentes; transações são curtas. Esta versão prioriza correção num piloto pequeno e serializa operações de uma mesma empresa. A busca carrega somente artigos publicados daquela empresa do PostgreSQL e reutiliza a classificação textual existente. Não há busca vetorial nem índice completo em memória entre chamadas. Limite atual do importador: 1.000 artigos por arquivo; rever estratégia de busca antes de bases grandes.
+API, worker e importador mantêm transações curtas. A indexação calcula embeddings fora do banco, persiste lotes de até 16 trechos com renovação de lease e usa uma transação final curta para ativar o conjunto completo. A busca combina full-text português e pgvector exato, sempre filtrados por empresa, publicação, conjunto e perfil dentro do SQL. Não existe leitura integral dos artigos nem índice completo em memória no caminho PostgreSQL. O importador aceita até 1.000 artigos por arquivo; a carga de referência com 10.000 artigos ainda precisa ser medida.
 
 Uma mensagem confirmada, execução e job são gravados na mesma transação. A mesma chave de idempotência recupera uma confirmação perdida; um payload diferente gera 409. O widget conserva a chave de um envio não confirmado. Geração falhada mantém a pergunta, permite retry controlado e não executa loops automáticos de erro. Lease expirada pode ser recuperada por outro worker; token de lease e tentativa impedem publicação do worker antigo. Antes da resposta, instalação, sessão, conversa e versões publicadas são revalidadas.
 
@@ -133,7 +143,7 @@ npm run test:chat
 npm run test:e2e
 ```
 
-Os dois últimos comandos exigem navegadores Playwright instalados e portas 3000/4174 livres. `test:chat` cria PostgreSQL temporário e usa provedor simulado; `test:e2e` verifica também a demonstração sem banco. Os testes unitários usam `--test-isolation=none` para que os casos TypeScript sejam de fato executados neste ambiente. A versão nativa do PostgreSQL é iniciada diretamente, sem o exit hook do wrapper `embedded-postgres`, para não mascarar códigos de falha.
+Os dois últimos comandos exigem navegadores Playwright instalados e portas 3000/4174 livres. `test:chat` cria PostgreSQL/pgvector temporário e usa provedor simulado; `test:e2e` verifica também a demonstração sem banco. Os testes unitários usam `--test-isolation=none` para que os casos TypeScript sejam de fato executados neste ambiente.
 
 ### Avaliar o provedor real separadamente
 

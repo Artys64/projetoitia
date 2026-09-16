@@ -10,6 +10,14 @@ export type KnowledgeItem = {
   publishedVersion: number | null
   hasUnpublishedChanges: boolean
   updatedAt: string
+  publication: KnowledgePublication | null
+}
+
+export type KnowledgePublication = {
+  id: string
+  state: 'queued' | 'indexing' | 'ready' | 'active' | 'failed' | 'cancelled' | 'superseded'
+  progress: number
+  errorCode: string | null
 }
 
 export type KnowledgeListResponse = { items: KnowledgeItem[] }

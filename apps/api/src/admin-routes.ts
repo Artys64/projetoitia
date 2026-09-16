@@ -86,13 +86,20 @@ export function registerAdminRoutes(
 
       protectedApi.post<{ Params: { id: string }; Body: { expectedRevision: number } }>('/knowledge/:id/publish', {
         schema: { params: knowledgeSchemas.params, body: knowledgeSchemas.publish },
-      }, async request => knowledge.publish(
+      }, async (request, reply) => reply.code(202).send(await knowledge.publish(
         requireAdminAccess(request), request.params.id, request.body.expectedRevision,
-      ))
+      )))
 
       protectedApi.post<{ Params: { id: string } }>('/knowledge/:id/unpublish', {
         schema: { params: knowledgeSchemas.params, body: knowledgeSchemas.empty },
       }, async request => knowledge.unpublish(requireAdminAccess(request), request.params.id))
+
+      protectedApi.delete<{ Params: { id: string } }>('/knowledge/:id', {
+        schema: { params: knowledgeSchemas.params },
+      }, async (request, reply) => {
+        await knowledge.delete(requireAdminAccess(request), request.params.id)
+        return reply.code(204).send()
+      })
     })
   }, { prefix: '/api/admin' })
 }

@@ -31,6 +31,7 @@ export function registerWidgetRoutes(app: FastifyInstance, store: ChatStore) {
       protectedApi.get<{Querystring:{before?:string;limit?:number}}>('/conversations',{schema:{querystring:chatSchemas.conversationQuery}},async r=>store.conversations(bearerToken(r),r.query.before,r.query.limit))
       protectedApi.post('/conversations',{schema:{body:chatSchemas.empty}},async r=>store.createConversation(bearerToken(r),key(r)))
       protectedApi.get<{Params:{id:string};Querystring:{after?:number;limit?:number}}>('/conversations/:id/messages',{schema:{params:idParams,querystring:chatSchemas.messageQuery}},async r=>store.messages(bearerToken(r),r.params.id,r.query.after,r.query.limit))
+      protectedApi.get<{Params:{articleId:string};Querystring:{version:number}}>('/knowledge/:articleId',{schema:{params:{type:'object',required:['articleId'],additionalProperties:false,properties:{articleId:chatSchemas.articleId}},querystring:chatSchemas.sourceQuery}},async r=>store.source(bearerToken(r),r.params.articleId,r.query.version))
       protectedApi.post<{Params:{id:string};Body:{message:string}}>('/conversations/:id/messages',{schema:{params:idParams,body:chatSchemas.message}},async(r,reply)=>{
         const result=await store.send(bearerToken(r),r.params.id,key(r),r.body.message.trim())
         return reply.code(202).send(result)

@@ -6,7 +6,7 @@ import { buildApp } from '../src/app.js'
 
 test('preparação da demo habilita chat e mantém artigos separados e sessões existentes', async () => {
   const fixture = await testDatabase()
-  const app = buildApp({ database: fixture.db, logger: false })
+  const app = buildApp({ database: fixture.db, logger: false, embeddingProvider: fixture.embeddings })
   try {
     await prepareDemo(fixture.admin)
     const response = await app.inject({

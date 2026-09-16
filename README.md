@@ -87,9 +87,9 @@ O modelo padrão é `openai/gpt-oss-20b`. Para usar outro modelo disponível na 
 
 No Free Plan, a Groq atualmente informa para esse modelo os limites de 30 requests/minuto, 1.000 requests/dia, 8.000 tokens/minuto e 200.000 tokens/dia. Os limites são compartilhados pela organização e podem mudar; confira sempre a [página oficial de limites](https://console.groq.com/docs/rate-limits) e os valores exibidos na sua conta.
 
-## RAG conversacional com base local
+## RAG conversacional
 
-A base fica em `apps/api/knowledge/articles.json`. Edite esse arquivo e reinicie a API para aplicar alterações. Para usar outro arquivo, configure `KNOWLEDGE_FILE` com um caminho absoluto em `apps/api/.env.local`. Arquivo inválido impede a inicialização, em vez de usar silenciosamente outra base.
+A base de exemplo sem banco fica em `apps/api/knowledge/articles.json`. Edite esse arquivo e reinicie a API para aplicar alterações. Para usar outro arquivo nesse modo, configure `KNOWLEDGE_FILE` com um caminho absoluto em `apps/api/.env.local`. Arquivo inválido impede a inicialização, em vez de usar silenciosamente outra base.
 
 Cada artigo tem este formato:
 
@@ -108,7 +108,9 @@ Cada artigo tem este formato:
 
 O exemplo ilustra o formato; publique apenas informações verificadas do seu produto. Incremente `version` ao alterar o conteúdo. Use `status: "draft"` para excluir um artigo da busca. A versão inicial inclui cinco artigos demonstrativos derivados das informações que já estavam no prompt.
 
-O servidor cria um índice textual em memória na inicialização, com trechos de até 900 caracteres. A busca normaliza acentos e prioriza título e palavras-chave. Cada chamada recupera até quatro trechos, com até 5.000 caracteres no JSON de contexto; isso é um limite de caracteres, não de tokens. Os limiares de pontuação são heurísticos, não uma medida de certeza. Sinônimos podem ser adicionados em `keywords`.
+Sem PostgreSQL, o servidor de desenvolvimento cria um índice textual em memória a partir desse JSON. Esse caminho é apenas o fallback local e dos testes unitários; não é usado pelo chat persistente.
+
+Com PostgreSQL, a publicação cria um job durável. O worker divide texto/Markdown em trechos versionados, gera embeddings locais e ativa o novo conjunto inteiro somente depois de validá-lo. A busca materializa no SQL apenas os trechos publicados da empresa e do perfil ativo, combina full-text em português com similaridade vetorial exata por RRF e devolve até quatro evidências dentro de 5.000 caracteres. Ela não carrega a tabela de artigos na memória e não busca globalmente para filtrar por empresa depois.
 
 O endpoint continua recebendo `{ "message": "..." }` ou `{ "messages": [...] }` e devolvendo `{ "reply": "...", "suggestions": [...] }`. Com IA ativa, todas as mensagens passam pelo modelo com até 12 mensagens de histórico, sem roteamento por listas de frases. O modelo pode responder a uma interação social ou pedir esclarecimento sem buscar. Para dúvidas sobre o produto, o prompt exige consultar `searchKnowledge`, formulando uma pergunta autossuficiente com o contexto relevante. O histórico ajuda a interpretar a intenção, mas não é uma fonte verificada de fatos do produto. A empresa é fixada no servidor e não faz parte dos argumentos da ferramenta.
 
@@ -130,7 +132,7 @@ curl http://localhost:3000/api/chat \
 
 Esta etapa atende à demonstração de uma única empresa: `KNOWLEDGE_COMPANY_ID` é definido no servidor (padrão `support-hub`), nunca pelo corpo da requisição. Use apenas conhecimento público nesse endpoint, que ainda não tem autenticação. A filtragem por empresa na busca não substitui autenticação e autorização. Esse endpoint legado atende ao chat de desenvolvimento em `/chatbot`. Para o widget persistente, use as rotas autenticadas descritas abaixo.
 
-Sem `DATABASE_URL`, o chat de desenvolvimento usa a base JSON e o índice permanece como uma fotografia do arquivo até reiniciar o processo; despublicar exige reiniciar todas as instâncias. Com `DATABASE_URL`, ele consulta no PostgreSQL os artigos publicados da empresa definida por `KNOWLEDGE_COMPANY_ID`. Esse modo não usa embeddings. O worker do widget persistente também consulta os artigos no PostgreSQL, resolve a empresa pela sessão e revalida versões antes do commit; sua auditoria é persistida por tentativa. Gestão de artigos pelo painel e fontes clicáveis permanecem pendentes.
+Sem `DATABASE_URL`, o chat de desenvolvimento usa a base JSON e o índice permanece como uma fotografia do arquivo até reiniciar o processo. Com `DATABASE_URL`, configure também `EMBEDDINGS_URL`: o chat de desenvolvimento e o worker usam a mesma recuperação híbrida. O worker resolve a empresa pela sessão e revalida conjunto, versão e hash das fontes antes do commit; o widget persiste e exibe “Artigos consultados”, revalidando a publicação quando a fonte é aberta.
 
 ## Instalação por snippet (demonstração local)
 
@@ -141,8 +143,8 @@ npm run demo
 
 Esse comando carrega `apps/api/.env` e `apps/api/.env.local`, compila o projeto,
 prepara as duas instalações de demonstração no banco e inicia API, worker da Nora
-e site hospedeiro. Requer `DATABASE_URL`, `MIGRATION_DATABASE_URL` e
-`GROQ_API_KEY`, com o banco já migrado e provisionado conforme a
+e site hospedeiro. Requer `DATABASE_URL`, `MIGRATION_DATABASE_URL`,
+`EMBEDDINGS_URL` e `GROQ_API_KEY`, com banco e serviço local de embeddings prontos conforme a
 [configuração do chat persistente](docs/operacao-chat-persistente.md).
 Se faltar configuração, houver migração pendente ou alguma porta estiver ocupada, o comando informa o
 problema e encerra antes de abrir uma demonstração com chat desabilitado.
@@ -271,6 +273,6 @@ npm run test:db
 npm run test:chat
 ```
 
-O banco de runtime deve usar `support_hub_app` e o comando administrativo usa `MIGRATION_DATABASE_URL`. Nenhuma fixture é publicada automaticamente. Autenticação administrativa, atendimento humano, streaming e gestão de artigos pelo painel ficam para entregas próprias.
+O banco de runtime deve usar `support_hub_app` e o comando administrativo usa `MIGRATION_DATABASE_URL`. Para conteúdo publicado que antecede as migrações vetoriais, execute `npm run db -- knowledge-backfill` e mantenha `npm run knowledge:index` ativo até esvaziar a fila. Nenhuma fixture é publicada automaticamente. Atendimento humano e streaming continuam fora deste escopo.
 
 Resultados desta etapa: [verificação do chat persistente](docs/verificacao-chat-persistente.md).

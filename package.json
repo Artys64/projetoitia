@@ -20,6 +20,7 @@
     "sizes": "node scripts/measure-bundles.mjs",
     "build:embed": "npm run build -w @support-hub/contracts && npm run build -w @support-hub/loader && npm run build -w @support-hub/widget",
     "db": "npm run db -w @support-hub/api --",
+    "knowledge:index": "npm run knowledge:index -w @support-hub/api",
     "test:db": "npm run build -w @support-hub/contracts && npm run test:db -w @support-hub/api",
     "worker": "npm run dev -w @support-hub/worker",
     "dev:widget": "npm run build:embed && npm run build -w @support-hub/api && npm run build -w @support-hub/worker && NODE_ENV=development HOST=127.0.0.1 PORT=3100 TRUST_PROXY_HOPS=0 concurrently -k -n api,worker \"node --env-file=apps/api/.env --env-file=apps/api/.env.local apps/api/dist/server.js\" \"node --env-file=apps/api/.env --env-file=apps/api/.env.local apps/worker/dist/index.js\"",

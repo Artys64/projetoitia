@@ -6,6 +6,8 @@ import { join } from 'node:path'
 import { loadArticles, validateArticles, type Article } from './ia/knowledge/repository.js'
 import { createTextSearch, retrievalQuery, splitContent } from './ia/knowledge/search.js'
 import { buildContext, MAX_CONTEXT_CHARS } from './ia/knowledge/context.js'
+import { contentHash, embeddingInput, splitKnowledgeDocument, SPLITTER_VERSION } from './ia/knowledge/chunking.js'
+import { DeterministicEmbeddingProvider, validateEmbeddingBatch } from './ia/embeddings/provider.js'
 
 const article: Article = {
   id: 'exportacao', companyId: 'a', version: 2, status: 'published',
@@ -78,4 +80,25 @@ test('usa a pergunta anterior em continuação explícita sem usar fatos do assi
   assert.match(retrievalQuery(history), /senha/)
   assert.doesNotMatch(retrievalQuery(history), /INVENTADO/)
   assert.equal(retrievalQuery([...history, { role: 'user', content: 'Qual a previsão do tempo?' }]), 'Qual a previsão do tempo?')
+})
+
+test('divisor versionado preserva cobertura, seções e limites para embeddings', () => {
+  assert.equal(SPLITTER_VERSION, 'markdown-words-v1')
+  const content = `# Instalação\n\n${Array.from({ length: 930 }, (_, index) => `passo${index}`).join(' ')}`
+  const chunks = splitKnowledgeDocument(content, 'markdown')
+  assert.ok(chunks.length >= 3)
+  assert.ok(chunks.every(chunk => chunk.tokenCount <= 400 && chunk.sectionTitle === 'Instalação'))
+  assert.ok(chunks.every((chunk, index) => chunk.index === index && chunk.literalHash.length === 64))
+  assert.match(embeddingInput('Manual', chunks[0]!), /^Manual\nInstalação\n/)
+  assert.equal(contentHash(content), contentHash(content.replace(/\n/g, '\r\n')))
+  assert.deepEqual(splitKnowledgeDocument(content, 'markdown'), chunks)
+})
+
+test('provedor simulado produz vetores normalizados e rejeita lotes inválidos', async () => {
+  const provider = new DeterministicEmbeddingProvider()
+  const result = await provider.embed(['redefinir senha'], 'query')
+  assert.equal(validateEmbeddingBatch(result, 1).vectors[0]?.length, 384)
+  const norm = Math.sqrt(result.vectors[0]!.reduce((sum, value) => sum + value * value, 0))
+  assert.ok(Math.abs(norm - 1) < 1e-9)
+  assert.throws(() => validateEmbeddingBatch({ vectors: [[0]], tokenCounts: [1] }, 1), /embedding_invalid/)
 })

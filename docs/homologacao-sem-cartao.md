@@ -8,7 +8,8 @@ O objetivo é homologação funcional agendada com dados fictícios. Esta prepar
 
 | Componente | Execução |
 |---|---|
-| PostgreSQL 18.4 | Docker local, volume persistente exclusivo e porta 55432 somente em loopback |
+| PostgreSQL 18 + pgvector 0.8.6 | Docker local, volume persistente exclusivo e porta 55432 somente em loopback |
+| Embeddings E5 | Serviço Docker offline, pesos fixados e porta 8090 somente em loopback |
 | API, loader e iframe | Build local, modo production, porta 3100 somente em loopback |
 | Worker da Nora | Processo local separado, mesma revisão da API |
 | Acesso externo à API | Quick Tunnel HTTPS apontando para 127.0.0.1:3100 |
@@ -63,6 +64,7 @@ DATABASE_URL=postgresql://support_hub_app:SUBSTITUIR_SENHA_RUNTIME@127.0.0.1:554
 ```dotenv
 NODE_ENV=production
 DATABASE_URL=postgresql://support_hub_app:SUBSTITUIR_SENHA_RUNTIME@127.0.0.1:55432/support_hub_homologacao
+EMBEDDINGS_URL=http://127.0.0.1:8090
 GROQ_API_KEY=SUBSTITUIR_CHAVE_GROQ
 GROQ_MODEL=openai/gpt-oss-20b
 ```
@@ -76,13 +78,17 @@ A configuração de proxy pressupõe `cloudflared` na mesma máquina e API acess
 ## 2. Subir banco e preparar aplicação
 
 ```bash
+hf download intfloat/multilingual-e5-small \
+  --revision fd1525a9fd15316a2d503bf26ab031a61d056e98 \
+  --local-dir models/multilingual-e5-small
 docker compose --env-file .env.homologacao.db -f compose.homologacao.yaml up -d --wait
 npm run build
 node --env-file=.env.homologacao.admin apps/api/dist/db/cli.js migrate
 node --env-file=.env.homologacao.admin apps/api/dist/db/cli.js provision
+node --env-file=.env.homologacao.admin apps/api/dist/db/cli.js knowledge-backfill
 ```
 
-O [Compose](../compose.homologacao.yaml) usa volume próprio e a montagem de dados indicada pela [imagem oficial para PostgreSQL 18](https://hub.docker.com/_/postgres). Reutilizar esse volume preserva o banco. Alterar POSTGRES_PASSWORD no arquivo não altera a senha de um banco já inicializado.
+O [Compose](../compose.homologacao.yaml) fixa PostgreSQL/pgvector e monta os pesos E5 somente para leitura. O serviço de embeddings opera offline e não deve ser exposto. Reutilizar o volume preserva o banco. Alterar `POSTGRES_PASSWORD` no arquivo não altera a senha de um banco já inicializado.
 
 Em terminais separados, a partir da raiz:
 

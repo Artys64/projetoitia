@@ -10,6 +10,8 @@ export type KnowledgeEvidence = Readonly<{
   title: string
   chunk: number
   text: string
+  indexSetId?: string
+  literalHash?: string
 }>
 
 export class EvidenceIntegrityError extends Error {
@@ -19,8 +21,8 @@ export class EvidenceIntegrityError extends Error {
   }
 }
 
-export function evidenceId(source: Pick<KnowledgeEvidence, 'companyId' | 'articleId' | 'version' | 'chunk'>): string {
-  return `${source.companyId}/${source.articleId}@${source.version}#${source.chunk}`
+export function evidenceId(source: Pick<KnowledgeEvidence, 'companyId' | 'articleId' | 'version' | 'chunk' | 'indexSetId'>): string {
+  return `${source.companyId}/${source.articleId}@${source.version}${source.indexSetId ? `~${source.indexSetId}` : ''}#${source.chunk}`
 }
 
 /** Snapshot only the hits actually included in a tool result, never the whole search index. */
@@ -36,6 +38,8 @@ export function collectEvidence(companyId: string, hits: readonly SearchHit[], p
     const evidence: KnowledgeEvidence = Object.freeze({
       sourceId: evidenceId(hit), companyId: hit.companyId, articleId: hit.articleId,
       version: hit.version, title: hit.title, chunk: hit.chunk, text: hit.text,
+      ...(hit.indexSetId ? { indexSetId: hit.indexSetId } : {}),
+      ...(hit.literalHash ? { literalHash: hit.literalHash } : {}),
     })
     const existing = result.get(evidence.sourceId)
     if (existing && (existing.text !== evidence.text || existing.title !== evidence.title)) throw new EvidenceIntegrityError()

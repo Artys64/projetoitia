@@ -7,7 +7,7 @@ import { PROMPT_VERSION } from './prompts/nora.js'
 import { sumUsage } from './usage.js'
 
 type ConversationMessage = { role: 'user' | 'assistant'; content: string }
-type SourceReference = Pick<KnowledgeEvidence, 'sourceId' | 'companyId' | 'articleId' | 'version' | 'chunk'>
+type SourceReference = Pick<KnowledgeEvidence, 'sourceId' | 'companyId' | 'articleId' | 'version' | 'chunk' | 'title' | 'indexSetId' | 'literalHash'>
 
 export type ResponseAudit = {
   durationMs: number
@@ -43,7 +43,9 @@ export type GenerationInput = {
 }
 
 const references = (sources: readonly KnowledgeEvidence[]): SourceReference[] =>
-  sources.map(({ sourceId, companyId, articleId, version, chunk }) => ({ sourceId, companyId, articleId, version, chunk }))
+  sources.map(({ sourceId, companyId, articleId, version, chunk, title, indexSetId, literalHash }) => ({
+    sourceId, companyId, articleId, version, chunk, title, indexSetId, literalHash,
+  }))
 
 function validInput(companyId: string, messages: ReadonlyArray<ConversationMessage>): boolean {
   if (!/^[a-zA-Z0-9_-]{1,80}$/.test(companyId) || messages.length === 0 || messages.length > 12) return false

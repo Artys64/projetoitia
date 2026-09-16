@@ -1,4 +1,4 @@
-import type { ApiError, Conversation, ConversationPage, MessagePage, SessionResponse } from '@support-hub/contracts'
+import type { ApiError, Conversation, ConversationPage, KnowledgeSourceResponse, MessagePage, SessionResponse } from '@support-hub/contracts'
 export class RequestError extends Error { constructor(readonly status:number,readonly code:string,message:string){super(message)} }
 type Pending={conversationId:string;message:string;key:string}
 type Saved={token?:string;expiresAt?:string;selectedId?:string;creationKey?:string;pending?:Pending}
@@ -45,6 +45,7 @@ export class ChatClient {
     this.saved.creationKey=undefined;this.selectedId=c.id;this.save();return c
   }
   messages(id:string,after=0){return this.request<MessagePage>(`/conversations/${id}/messages?after=${after}`)}
+  source(articleId:string,version:number){return this.request<KnowledgeSourceResponse>(`/knowledge/${encodeURIComponent(articleId)}?version=${version}`)}
   async send(id:string,message:string){
     if(this.saved.pending&&(this.saved.pending.conversationId!==id||this.saved.pending.message!==message)) throw new RequestError(409,'unconfirmed','Confirme o envio anterior antes de enviar outra mensagem.')
     this.saved.pending??={conversationId:id,message,key:crypto.randomUUID()};this.save()
