@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Verificação da instalação por snippet
 
 Data: 11/09/2026.

@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # MVP — Central de suporte incorporada ao produto
 
 Data: 09/09/2026. Direção definida a partir da referência visual enviada pelo usuário: o painel de suporte aberto dentro do Claude.

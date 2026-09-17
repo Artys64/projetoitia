@@ -1,8 +1,10 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Corpus de qualidade da Nora
 
-Data: 14/09/2026. Entregas: Etapas 1–3 do [plano de qualidade](plano-qualidade-respostas-nora.md).
+Data: 14/09/2026. Entregas: Etapas 1–3 do [plano de qualidade](../plans/plano-qualidade-respostas-nora.md).
 
-O [corpus versionado](../tests/fixtures/nora-quality.json) contém 40 casos sintéticos, com 24 destinados ao desenvolvimento e 16 reservados para validação. Há 80 rascunhos anotados: um correto e um incorreto por caso. As anotações são expectativas para a avaliação futura, não resultados de um verificador já executado.
+O [corpus versionado](../../../tests/fixtures/nora-quality.json) contém 40 casos sintéticos, com 24 destinados ao desenvolvimento e 16 reservados para validação. Há 80 rascunhos anotados: um correto e um incorreto por caso. As anotações são expectativas para a avaliação futura, não resultados de um verificador já executado.
 
 ## Referência congelada
 
@@ -71,13 +73,13 @@ O script legado `scripts/evaluate-nora.mts` continua fazendo chamadas reais e ai
 
 ## Etapa 2 — Verificador e política com provedor simulado
 
-A entrada [generateVerifiedNoraResponse](../apps/api/src/ia/verified-response.ts) executa geração e verificação separadas e devolve uma união discriminada: `status: publish` com o texto final e suas fontes, ou `status: blocked` com um código técnico. A saída bloqueada não contém texto do rascunho. Na entrega da Etapa 2, essa entrada ainda não estava conectada aos consumidores; a integração e a persistência da auditoria foram acrescentadas na Etapa 3, descrita abaixo.
+A entrada histórica `generateVerifiedNoraResponse` executava geração e verificação separadas e devolvia uma união discriminada: `status: publish` com o texto final e suas fontes, ou `status: blocked` com um código técnico. A saída bloqueada não continha texto do rascunho. Na entrega da Etapa 2, essa entrada ainda não estava conectada aos consumidores; a integração e a persistência da auditoria foram acrescentadas na Etapa 3, descrita abaixo. O arquivo citado na revisão original não existe mais na árvore atual.
 
-[generateNoraDraft](../apps/api/src/ia/agents/nora.ts) preserva os trechos realmente incluídos nos retornos da ferramenta. A identidade inclui empresa, artigo, versão e chunk. Repetições são deduplicadas; versões diferentes ficam separadas; texto divergente para a mesma identidade e fontes de outra empresa causam falha. O contexto e as evidências são cópias independentes dos objetos da busca. Os snapshots de evidência retornados são imutáveis.
+[generateNoraDraft](../../../apps/api/src/ia/agents/nora.ts) preserva os trechos realmente incluídos nos retornos da ferramenta. A identidade inclui empresa, artigo, versão e chunk. Repetições são deduplicadas; versões diferentes ficam separadas; texto divergente para a mesma identidade e fontes de outra empresa causam falha. O contexto e as evidências são cópias independentes dos objetos da busca. Os snapshots de evidência retornados são imutáveis.
 
-O prompt [nora-verification-v1](../apps/api/src/ia/prompts/verification.ts) recebe pergunta atual, histórico, rascunho completo e evidências em um payload de dados. Comandos nos artigos ou mensagens não alteram a política do sistema. O verificador usa `generateText` com `Output.object`, conforme a documentação e o código do AI SDK instalado. Não recebe ferramentas, gabaritos ou uma função de reescrita. O modelo deve ser fornecido explicitamente pelo chamador; nesta entrega foram usados apenas modelos simulados.
+O prompt histórico `nora-verification-v1` recebia pergunta atual, histórico, rascunho completo e evidências em um payload de dados. Comandos nos artigos ou mensagens não alteravam a política do sistema. O verificador usava `generateText` com `Output.object`, conforme a documentação e o código do AI SDK instalado. Não recebia ferramentas, gabaritos ou uma função de reescrita. O modelo devia ser fornecido explicitamente pelo chamador; nesta entrega foram usados apenas modelos simulados. O arquivo citado na revisão original não existe mais na árvore atual.
 
-O [contrato](../apps/api/src/ia/verification.ts) inclui decisão, motivos enumerados, intenção, cobertura, segmentos e uma eventual referência para alternativa literal. Os segmentos particionam o rascunho inteiro por índices UTF-16, com fim exclusivo, sem lacunas nem sobreposição. Cada passagem precisa coincidir literalmente com o rascunho; os segmentos factuais aprovados precisam de fonte existente e citação literal da evidência. Campos desconhecidos, referências forjadas, decisão incerta ou JSON inválido bloqueiam a resposta.
+O contrato histórico incluía decisão, motivos enumerados, intenção, cobertura, segmentos e uma eventual referência para alternativa literal. Os segmentos particionavam o rascunho inteiro por índices UTF-16, com fim exclusivo, sem lacunas nem sobreposição. Cada passagem precisava coincidir literalmente com o rascunho; os segmentos factuais aprovados precisavam de fonte existente e citação literal da evidência. Campos desconhecidos, referências forjadas, decisão incerta ou JSON inválido bloqueavam a resposta. O arquivo citado na revisão original não existe mais na árvore atual.
 
 Limites do contrato: 8.000 caracteres no rascunho, até 12 mensagens, oito evidências, 64 segmentos e seis motivos. O verificador tem temperatura 0, limite de 3.000 tokens de saída e uma chamada por tentativa. Retorno terminado por limite de tokens também é bloqueado. Retries automáticos do SDK estão desativados nas duas etapas, preservando o máximo de três chamadas de geração mais uma de verificação.
 
@@ -89,7 +91,7 @@ O prazo absoluto é compartilhado e limitado a 20 segundos, inclusive se o chama
 
 O retorno contém auditoria com versões de prompt, modelo informado pelo provedor, duração, decisão, motivos e referências das fontes recuperadas e de suporte. Tokens de geração e verificação são somados, preservando detalhes de cache e raciocínio quando disponíveis. Saída estruturada inválida preserva o uso informado pelo SDK. Em falhas de geração, a auditoria conserva o uso das etapas concluídas com `completed: false`; o total da tentativa permanece desconhecido. Uso ausente nunca é convertido em zero. Rascunho, histórico, citações do parecer e corpos brutos de erros não entram na auditoria.
 
-Os testes em [nora-verification.test.ts](../apps/api/src/nora-verification.test.ts) fornecem pareceres simulados para testar contratos, decisão e limites. Eles não medem a capacidade semântica de um modelo real. A cobertura integral por segmentos impede omissões estruturais, mas um modelo ainda pode classificar incorretamente uma frase ou atribuir suporte semântico indevido a uma citação real. A avaliação humana da Etapa 4 continua necessária.
+Os testes históricos de `nora-verification.test.ts` forneciam pareceres simulados para testar contratos, decisão e limites. Eles não mediam a capacidade semântica de um modelo real. A cobertura integral por segmentos impedia omissões estruturais, mas um modelo ainda podia classificar incorretamente uma frase ou atribuir suporte semântico indevido a uma citação real. A avaliação humana da Etapa 4 continuava necessária. O arquivo citado na revisão original não existe mais na árvore atual.
 
 O gerador mudou na Etapa 2; por isso `npm run quality:corpus` deve informar `currentMatchesBaseline.generator: false`. O snapshot histórico, os artigos e o prompt `rag-agent-v3` foram preservados. Não houve avaliação semântica dos 16 casos reservados.
 
@@ -97,9 +99,9 @@ Verificação da Etapa 2: `npm test` passou com 53 testes de API (28 novos para 
 
 ## Etapa 3 — Integração, auditoria e publicação transacional
 
-[createVerifiedGenerator](../apps/api/src/ia/runtime.ts) conecta o worker e o serviço de desenvolvimento ao mesmo fluxo. `GROQ_VERIFICATION_MODEL` permite escolher o verificador; quando ausente, usa o modelo de geração. A entrada legada sem verificação fica restrita ao avaliador de referência. Sugestões dos artigos não são publicadas, pois não passaram pelo parecer. O modo sem LLM identifica explicitamente sua saída como demonstração sem verificação de pertinência.
+[createVerifiedGenerator](../../../apps/api/src/ia/runtime.ts) conecta o worker e o serviço de desenvolvimento ao mesmo fluxo. `GROQ_VERIFICATION_MODEL` permite escolher o verificador; quando ausente, usa o modelo de geração. A entrada legada sem verificação fica restrita ao avaliador de referência. Sugestões dos artigos não são publicadas, pois não passaram pelo parecer. O modo sem LLM identifica explicitamente sua saída como demonstração sem verificação de pertinência.
 
-A [migração 002](../apps/api/migrations/002_response_verification.sql) acrescenta `ai_run_attempts`, isolada por empresa com RLS e sem permissão de exclusão para o runtime. Cada tentativa registra lease, estado, modelo e prompt de cada etapa quando disponíveis, decisão, motivos, fontes, duração e uso. O rascunho rejeitado e as citações internas do parecer não são persistidos. Uma resposta tardia só pode completar a auditoria de sua própria tentativa expirada, sem sobrescrever a tentativa atual.
+A [migração 002](../../../apps/api/migrations/002_response_verification.sql) acrescenta `ai_run_attempts`, isolada por empresa com RLS e sem permissão de exclusão para o runtime. Cada tentativa registra lease, estado, modelo e prompt de cada etapa quando disponíveis, decisão, motivos, fontes, duração e uso. O rascunho rejeitado e as citações internas do parecer não são persistidos. Uma resposta tardia só pode completar a auditoria de sua própria tentativa expirada, sem sobrescrever a tentativa atual.
 
 Antes da geração e da publicação, o worker confere a autorização e a propriedade da lease. A transação final revalida as versões de todas as fontes recuperadas e de suporte, inclusive para alternativas literais ou fixas. Bloqueios de linha impedem alterações concorrentes; o `INSERT` também confere o relógio real para detectar expiração da sessão ou lease durante a espera por bloqueios. Mensagem final, auditoria e conclusão da execução são confirmadas atomicamente.
 

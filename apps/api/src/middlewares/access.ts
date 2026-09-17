@@ -21,7 +21,7 @@ declare module 'fastify' {
 }
 
 export class AccessError extends Error {
-  constructor(readonly statusCode: 401 | 403, readonly code: string, message: string) {
+  constructor(readonly statusCode: 401 | 403 | 429, readonly code: string, message: string) {
     super(message)
   }
 }

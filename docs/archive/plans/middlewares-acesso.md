@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Middlewares de acesso
 
 Os middlewares ficam em `apps/api/src/middlewares/`, separados das rotas e do SQL:

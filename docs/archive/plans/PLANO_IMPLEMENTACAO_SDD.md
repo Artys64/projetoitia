@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Plano de implementação orientado pelo SDD
 
 Data: 11/09/2026. Status: planejamento; primeira entrega delimitada conforme orientação do usuário, ainda não implementada.
@@ -8,7 +10,7 @@ Construir uma central de suporte multiempresa, incorporada por iframe, com ajuda
 
 Documentos lidos integralmente:
 
-- [sdd.md](docs/sdd.md): referência técnica principal para iframe, integração, experiência e resiliência.
+- [Especificação técnica](../../sdd.md): referência técnica principal para iframe, integração, experiência e resiliência.
 - [MVP_REFERENCIA_CLAUDE.md](MVP_REFERENCIA_CLAUDE.md): recorte funcional e critérios de valor.
 - [PLANO_CONSTRUCAO_MVP.md](PLANO_CONSTRUCAO_MVP.md): planejamento anterior e requisitos complementares.
 
@@ -301,6 +303,6 @@ Para fechar P0: registrar somente decisões necessárias à prova externa — or
 
 Antes de P2/P3: decidir persistência, migrações e autenticação administrativa. Antes de P4: validar garantia de sessão em navegadores reais, identidade/logout e SSE+WSS versus SSE unificado. Antes de P5: definir provedor/modelo, orçamento e avaliação. Antes de P7: fechar carga inicial, retenção e metas de recuperação. Cada decisão deve registrar contexto, escolha, alternativa descartada e condição de revisão.
 
-O [plano de instalação por snippet](docs/plano-instalacao-snippet.md) detalha os contratos de P0, a sequência de implementação e a matriz de verificação de P1.
+O [plano de instalação por snippet](plano-instalacao-snippet.md) detalha os contratos de P0, a sequência de implementação e a matriz de verificação de P1.
 
 Próxima execução planejada: implementar P1 conforme esse detalhamento até demonstrar seus critérios de aceite na página externa. Esta revisão altera o planejamento; a prova ainda não foi implementada nem executada.

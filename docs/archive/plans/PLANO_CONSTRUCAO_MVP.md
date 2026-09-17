@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Plano de construção — Central de suporte incorporada
 
 Data do plano: 09/09/2026  

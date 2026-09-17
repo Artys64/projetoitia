@@ -1,10 +1,46 @@
 import { AccessError, type AdminAccess } from '../middlewares/access.js'
 import { digest } from './store.js'
 import type { Database, Sql } from './database.js'
+import { randomBytes, randomUUID } from 'node:crypto'
+import { normalizeAdminUsername, verifyAdminPassword } from './admin-password.js'
 
-/** Session issuance belongs to the login flow; the HTTP runtime only reads these tables. */
 export class AdminSessionStore {
   constructor(readonly db: Database) {}
+
+  async checkLoginRate(ip: string): Promise<void> {
+    const key = digest(`admin-login:${ip}:${Math.floor(Date.now() / 900_000)}`)
+    const result = await this.db.pool.query(`INSERT INTO session_rate_buckets(key,expires_at)
+      VALUES($1,now()+interval '30 minutes') ON CONFLICT(key)
+      DO UPDATE SET count=session_rate_buckets.count+1 RETURNING count`, [key])
+    if (result.rows[0].count > 10) {
+      throw new AccessError(429, 'login_rate_limited', 'Muitas tentativas. Aguarde 15 minutos e tente novamente.')
+    }
+  }
+
+  async login(username: string, password: string): Promise<{ token: string; access: AdminAccess }> {
+    const token = randomBytes(32).toString('base64url')
+    const access = await this.db.transaction(null, async sql => {
+      await sql.query("SELECT set_config('app.admin_username',$1,true)", [normalizeAdminUsername(username)])
+      const account = (await sql.query('SELECT * FROM admin_credentials WHERE username=$1',
+        [normalizeAdminUsername(username)])).rows[0]
+      const valid = await verifyAdminPassword(password, account?.password_hash)
+      const denied = () => new AccessError(401, 'invalid_credentials', 'Usuário ou senha inválidos.')
+      if (!valid || !account) throw denied()
+      const credentialHash = digest(token)
+      await sql.query("SELECT set_config('app.tenant_id',$1,true), set_config('app.admin_user_id',$2,true), set_config('app.admin_token_hash',$3,true)",
+        [account.tenant_id, account.user_id, credentialHash])
+      const authorized = await sql.query(`SELECT m.user_id FROM admin_memberships m
+        JOIN admin_users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id
+        WHERE m.user_id=$1 AND m.tenant_id=$2 AND m.active AND u.active AND t.active`,
+      [account.user_id, account.tenant_id])
+      if (!authorized.rowCount) throw denied()
+      const sessionId = randomUUID()
+      await sql.query(`INSERT INTO admin_sessions(id,tenant_id,user_id,token_hash,expires_at)
+        VALUES($1,$2,$3,$4,now()+interval '7 days')`, [sessionId, account.tenant_id, account.user_id, credentialHash])
+      return { role: 'admin' as const, companyId: account.tenant_id, userId: account.user_id, sessionId, credentialHash }
+    })
+    return { token, access }
+  }
 
   async authenticate(token: string): Promise<AdminAccess> {
     if (!/^[A-Za-z0-9_-]{43}$/.test(token)) {

@@ -29,8 +29,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const adminApi = {
   session: () => request<AdminSession>('/session'),
-  login: (token: string) => request<AdminSession>('/login', {
-    method: 'POST', body: JSON.stringify({ token: token.trim() }),
+  login: (username: string, password: string) => request<AdminSession>('/login', {
+    method: 'POST', body: JSON.stringify({ username: username.trim(), password }),
   }),
   logout: () => request<void>('/session', { method: 'DELETE' }),
   list: () => request<KnowledgeListResponse>('/knowledge'),

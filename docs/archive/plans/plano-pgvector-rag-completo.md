@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # pgvector e RAG completo da Nora
 
 Data: 15/09/2026. Atualizado em 16/09/2026. Status: núcleo R0–R6 implementado e validado localmente; avaliação de escala e preparação de produção de R7 continuam pendentes.

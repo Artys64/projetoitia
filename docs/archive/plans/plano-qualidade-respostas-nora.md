@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Plano de qualidade e verificação das respostas da Nora
 
 Data: 14/09/2026. Status: Etapas 1–3 implementadas; Etapas 4–5 pendentes.
@@ -6,13 +8,13 @@ Data: 14/09/2026. Status: Etapas 1–3 implementadas; Etapas 4–5 pendentes.
 
 Adicionar uma etapa de verificação entre a geração e a publicação da resposta da Nora. A resposta deve respeitar a pergunta atual, o escopo do suporte e as informações dos trechos recuperados naquela interação. Quando não for possível aprová-la, o servidor deve escolher uma saída conservadora.
 
-O documento foi criado inicialmente como plano. O corpus, o fluxo verificável e sua integração ao worker/serviço estão implementados, conforme [avaliação de qualidade](avaliacao-qualidade-nora.md). O verificador e o chat foram testados com provedor simulado e PostgreSQL real. Novas chamadas pagas à Groq e implantação ainda não foram executadas.
+O documento foi criado inicialmente como plano. O corpus, o fluxo verificável e sua integração ao worker/serviço estão implementados, conforme [avaliação de qualidade](../verification/avaliacao-qualidade-nora.md). O verificador e o chat foram testados com provedor simulado e PostgreSQL real. Novas chamadas pagas à Groq e implantação ainda não foram executadas.
 
 Uma segunda avaliação por IA pode reduzir erros, mas também pode falhar. A aprovação depende de testes, avaliação humana e resultados medidos; não representa garantia geral de ausência de alucinações.
 
 ## 2. Problema comprovado
 
-A [verificação do chat persistente](verificacao-chat-persistente.md) registrou duas falhas mesmo após o reforço do prompt para `rag-agent-v3`:
+A [verificação do chat persistente](../verification/verificacao-chat-persistente.md) registrou duas falhas mesmo após o reforço do prompt para `rag-agent-v3`:
 
 | Caso | Comportamento observado | Comportamento esperado |
 |---|---|---|
@@ -118,17 +120,17 @@ Os novos caminhos abaixo são propostas; confirmar a organização existente ao 
 
 | Arquivo ou área | Trabalho previsto |
 |---|---|
-| [Agente Nora](../apps/api/src/ia/agents/nora.ts) | Expor rascunho, evidências e métricas; receber o prazo compartilhado. |
-| [Prompt Nora](../apps/api/src/ia/prompts/nora.ts) | Preservar as regras de fundamentação e versionar qualquer alteração. |
+| [Agente Nora](../../../apps/api/src/ia/agents/nora.ts) | Expor rascunho, evidências e métricas; receber o prazo compartilhado. |
+| [Prompt Nora](../../../apps/api/src/ia/prompts/nora.ts) | Preservar as regras de fundamentação e versionar qualquer alteração. |
 | `apps/api/src/ia/prompts/verification.ts` — novo | Definir as instruções do verificador. |
 | `apps/api/src/ia/verification.ts` — novo | Validar o parecer e aplicar a política de publicação em funções testáveis. |
-| [Contexto](../apps/api/src/ia/knowledge/context.ts) | Preservar identidade e conteúdo dos trechos; apoiar deduplicação. |
-| [Serviço de chat](../apps/api/src/ia/service.ts) | Consumir a resposta final verificada e revisar sugestões/fallbacks. |
-| [Worker](../apps/api/src/db/worker.ts) | Integrar a verificação antes da publicação, mantendo as garantias transacionais. |
+| [Contexto](../../../apps/api/src/ia/knowledge/context.ts) | Preservar identidade e conteúdo dos trechos; apoiar deduplicação. |
+| [Serviço de chat](../../../apps/api/src/ia/service.ts) | Consumir a resposta final verificada e revisar sugestões/fallbacks. |
+| [Worker](../../../apps/api/src/db/worker.ts) | Integrar a verificação antes da publicação, mantendo as garantias transacionais. |
 | `apps/api/migrations/` | Criar a próxima migração aditiva para auditoria por tentativa, se os campos atuais forem insuficientes. |
-| [Avaliação Nora](../scripts/evaluate-nora.mts) | Ler corpus versionado, executar cenários e gerar relatório de qualidade. |
+| [Avaliação Nora](../../../scripts/evaluate-nora.mts) | Ler corpus versionado, executar cenários e gerar relatório de qualidade. |
 | `tests/fixtures/nora-quality.json` — novo | Registrar casos sintéticos, contexto, fontes e critérios esperados. |
-| [Documento de verificação](verificacao-chat-persistente.md) | Acrescentar resultados reais somente após executar as novas verificações. |
+| [Documento de verificação](../verification/verificacao-chat-persistente.md) | Acrescentar resultados reais somente após executar as novas verificações. |
 
 Registrar por execução e tentativa: versões dos prompts, modelos, decisão, motivos, tipo de resposta publicada, referências das fontes, duração e uso de cada etapa. Preservar a compatibilidade das métricas existentes e distinguir rejeição semântica de indisponibilidade técnica.
 
@@ -231,6 +233,6 @@ A Etapa 1 está implementada em `tests/fixtures/nora-quality.json`: 40 casos, 24
 
 A Etapa 2 está implementada em `generateVerifiedNoraResponse`, com evidências imutáveis, parecer estruturado, decisão de publicação, prazo compartilhado e métricas separadas. Os testes de contrato usam provedor simulado e casos de desenvolvimento; o conjunto reservado continua sem avaliação semântica.
 
-A Etapa 3 conecta os dois consumidores ao fluxo verificado, com auditoria por tentativa na migração `002_response_verification.sql`, métricas incluindo retries e revalidação transacional. Tipagem e build passaram, assim como 70 testes unitários/API/contratos/corpus, 25 testes de banco (incluindo agregadores) e 36 testes de chat em Chromium, Firefox e WebKit. Os resultados e limites estão na [verificação do chat](verificacao-chat-persistente.md).
+A Etapa 3 conecta os dois consumidores ao fluxo verificado, com auditoria por tentativa na migração `002_response_verification.sql`, métricas incluindo retries e revalidação transacional. Tipagem e build passaram, assim como 70 testes unitários/API/contratos/corpus, 25 testes de banco (incluindo agregadores) e 36 testes de chat em Chromium, Firefox e WebKit. Os resultados e limites estão na [verificação do chat](../verification/verificacao-chat-persistente.md).
 
 Próxima ação: iniciar a Etapa 4 pela adaptação do avaliador, acrescentando limites de casos, repetições, chamadas e tokens e um resumo prévio sem chamadas externas. Antes de executar com Groq, definir o orçamento da rodada. A qualidade semântica só poderá ser avaliada com as rodadas comparativas e a revisão humana; os testes simulados não aprovam o piloto.

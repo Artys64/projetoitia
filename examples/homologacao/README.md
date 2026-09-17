@@ -38,4 +38,4 @@ Se o site definir CSP, autorize a origem HTTPS da API em `script-src`, `style-sr
 
 Pergunte “Qual é o horário de atendimento?” em ambos os chats. A Aurora deve responder segunda a sexta, 9h às 18h; a Jardim e Casa deve responder terça a sábado, 10h às 16h. Pergunte também como acompanhar uma solicitação e compare com os artigos de cada empresa. Feche e reabra o chat e recarregue a página para verificar o histórico. Um snippet A instalado no site B deve ser bloqueado.
 
-Confira o roteiro completo, incluindo inicialização da API e do worker, em [Homologação sem cartão](../../docs/homologacao-sem-cartao.md). Este preparo não significa que os dados já foram importados nem que houve validação HTTPS ou da resposta real da Nora.
+Confira o roteiro completo, incluindo inicialização da API e do worker, em [Homologação](../../docs/operations/homologacao.md). Este preparo não significa que os dados já foram importados nem que houve validação HTTPS ou da resposta real da Nora.

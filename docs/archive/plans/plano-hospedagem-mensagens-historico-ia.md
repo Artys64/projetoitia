@@ -1,6 +1,8 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Plano de hospedagem e conexão de mensagens, histórico e IA
 
-Plano de 11/09/2026. Atualização em 14/09/2026: contratos, persistência, worker e widget implementados; resultados em [verificação do chat persistente](verificacao-chat-persistente.md). Homologação HTTPS e piloto ainda não publicados; a avaliação real de qualidade da Nora também permanece pendente. Configuração e limites em [operação do chat persistente](operacao-chat-persistente.md).
+Plano de 11/09/2026. Atualização em 14/09/2026: contratos, persistência, worker e widget implementados; resultados em [verificação do chat persistente](../verification/verificacao-chat-persistente.md). Homologação HTTPS e piloto ainda não publicados; a avaliação real de qualidade da Nora também permanece pendente. Configuração e limites em [operação do chat persistente](operacao-chat-persistente.md).
 
 ## 1. Objetivo e recorte
 
@@ -8,7 +10,7 @@ Publicar o Support Hub em HTTPS e permitir que um visitante, em um site externo 
 
 Começar com uma empresa real no piloto, mantendo isolamento multiempresa desde o modelo de dados. Validar com duas empresas e dois visitantes por empresa nos testes.
 
-Este documento detalha um recorte das etapas P2–P5 e da preparação operacional P7 do [plano principal](../PLANO_IMPLEMENTACAO_SDD.md). Dá continuidade à [instalação por snippet](plano-instalacao-snippet.md), cuja evidência local está na [verificação do snippet](verificacao-snippet.md).
+Este documento detalha um recorte das etapas P2–P5 e da preparação operacional P7 do [plano principal](PLANO_IMPLEMENTACAO_SDD.md). Dá continuidade à [instalação por snippet](plano-instalacao-snippet.md), cuja evidência local está na [verificação do snippet](../verification/verificacao-snippet.md).
 
 Decisões propostas para esta entrega:
 

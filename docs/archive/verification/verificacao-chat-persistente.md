@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Verificação do chat persistente — 14/09/2026
 
 ## Resultado e escopo
@@ -24,7 +26,7 @@ No navegador, o chat foi exercitado com provedor simulado e PostgreSQL real: env
 
 O `--test-isolation=none` faz os testes TypeScript internos serem executados no ambiente atual. A biblioteca de PostgreSQL portátil fornece os binários; o teste inicia esses binários diretamente e gerencia seu encerramento para evitar o exit hook do wrapper mascarando falhas. Logs de conexão perdida durante o teste de reinício são esperados.
 
-WebKit foi executado com bibliotecas Ubuntu extraídas para `/tmp` e ligadas ao bundle temporário do navegador; `ldd` confirmou as dependências. A checagem de pacotes do sistema foi desabilitada, não os testes. Procedimento em [operação](operacao-chat-persistente.md). Nenhuma instalação de pacotes no sistema foi feita.
+WebKit foi executado com bibliotecas Ubuntu extraídas para `/tmp` e ligadas ao bundle temporário do navegador; `ldd` confirmou as dependências. A checagem de pacotes do sistema foi desabilitada, não os testes. Procedimento em [operação](../plans/operacao-chat-persistente.md). Nenhuma instalação de pacotes no sistema foi feita.
 
 ## Tamanhos medidos
 
@@ -79,4 +81,4 @@ Ambiente: Node.js 26.5.1, PostgreSQL portátil 18.4 e Playwright 1.63.0. A prime
 
 No navegador, o teste novo de alternativa literal inicialmente incluiu o rótulo “Nora” na comparação de texto. O seletor foi corrigido para o parágrafo da mensagem; a resposta persistida já correspondia ao trecho esperado. As capturas em `test-results/chat/` mostram o trecho literal após recarga e o estado de erro recuperável, sem rascunho bloqueado. Os mocks passam pelo fluxo real de ferramentas e verificação, mas seus pareceres são fixtures e não medem qualidade semântica.
 
-Nenhuma nova chamada Groq, migração remota ou implantação nesta atualização. Antes de iniciar o worker atualizado em um banco existente, aplicar `npm run db -- migrate`. A avaliação comparativa com orçamento definido e revisão humana continua pendente na Etapa 4 do [plano](plano-qualidade-respostas-nora.md).
+Nenhuma nova chamada Groq, migração remota ou implantação nesta atualização. Antes de iniciar o worker atualizado em um banco existente, aplicar `npm run db -- migrate`. A avaliação comparativa com orçamento definido e revisão humana continua pendente na Etapa 4 do [plano](../plans/plano-qualidade-respostas-nora.md).

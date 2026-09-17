@@ -30,18 +30,28 @@ export function registerAdminRoutes(
       return reply.code(503).send({ code: 'unavailable', error: 'Serviço temporariamente indisponível.' })
     })
 
-    api.post<{ Body: { token: string } }>('/login', {
+    api.post<{ Body: { token: string } | { username: string; password: string } }>('/login', {
       schema: {
         body: {
-          type: 'object', additionalProperties: false, required: ['token'],
-          properties: { token: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' } },
+          oneOf: [
+            { type: 'object', additionalProperties: false, required: ['token'],
+              properties: { token: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' } } },
+            { type: 'object', additionalProperties: false, required: ['username', 'password'],
+              properties: {
+                username: { type: 'string', minLength: 3, maxLength: 120 },
+                password: { type: 'string', minLength: 1, maxLength: 256 },
+              } },
+          ],
         },
       },
     }, async (request, reply) => {
       requireAdminWriteOrigin(request, options)
-      const access = await sessions.authenticate(request.body.token)
+      await sessions.checkLoginRate(request.ip)
+      const { token, access } = 'token' in request.body
+        ? { token: request.body.token, access: await sessions.authenticate(request.body.token) }
+        : await sessions.login(request.body.username, request.body.password)
       const cookie = [
-        `${adminCookieName(options.production)}=${request.body.token}`,
+        `${adminCookieName(options.production)}=${token}`,
         'Path=/', 'HttpOnly', 'SameSite=Strict', 'Max-Age=604800',
         ...(options.production ? ['Secure'] : []),
       ].join('; ')

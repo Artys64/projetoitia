@@ -10,6 +10,7 @@ export class Database {
     const sql = await this.pool.connect()
     try {
       await sql.query('BEGIN')
+      await sql.query("SELECT set_config('app.admin_username','',true)")
       await sql.query("SELECT set_config('app.tenant_id',$1,true), set_config('app.token_hash','',true), set_config('app.admin_token_hash','',true), set_config('app.admin_user_id','',true), set_config('TimeZone','UTC',true), set_config('statement_timeout','10000',true), set_config('lock_timeout','5000',true)", [tenant ?? ''])
       const result = await work(sql)
       await sql.query('COMMIT')

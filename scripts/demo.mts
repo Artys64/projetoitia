@@ -7,7 +7,7 @@ async function main() {
   if (process.env.NODE_ENV === 'production') throw new Error('npm run demo é exclusivo de desenvolvimento.')
   const required = ['DATABASE_URL', 'MIGRATION_DATABASE_URL', 'GROQ_API_KEY'] as const
   const missing = required.filter(key => !process.env[key]?.trim())
-  if (missing.length) throw new Error(`Configure ${missing.join(', ')} em apps/api/.env.local. Consulte docs/operacao-chat-persistente.md. Para somente visualizar o widget sem chat, use npm run demo:visual.`)
+  if (missing.length) throw new Error(`Configure ${missing.join(', ')} em apps/api/.env.local. Consulte docs/getting-started/demonstracao.md. Para somente visualizar o widget sem chat, use npm run demo:visual.`)
 
   // Refuse to show a different API that was already running on the demo ports.
   for (const port of [3000, 4174]) {
@@ -37,7 +37,7 @@ async function main() {
     'node apps/api/dist/server.js', 'node apps/worker/dist/index.js', 'node apps/demo-host/server.mjs',
   ], {
     stdio: 'inherit',
-    env: { ...process.env, NODE_ENV: 'development', HOST: '127.0.0.1', PORT: '3000', TRUST_PROXY_HOPS: '0' },
+    env: { ...process.env, NODE_ENV: 'development', HOST: '127.0.0.1', PORT: '3000', TRUST_PROXY_HOPS: '0', ADMIN_ORIGIN: 'http://localhost:4174' },
   })
   const stop = (signal: NodeJS.Signals) => { child.kill(signal) }
   process.on('SIGINT', stop)

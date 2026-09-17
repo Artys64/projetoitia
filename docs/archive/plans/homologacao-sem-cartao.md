@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Homologação sem cartão
 
 Estratégia preparada em 14/09/2026: API, worker e PostgreSQL em uma máquina disponível, com acesso HTTPS temporário por Cloudflare Quick Tunnel. Não exige contratar hospedagem nem comprar domínio. Depende de a máquina permanecer ligada e conectada durante a sessão. O Render fica como alternativa futura; não aplique o Blueprint pago para seguir este procedimento.
@@ -88,7 +90,7 @@ node --env-file=.env.homologacao.admin apps/api/dist/db/cli.js provision
 node --env-file=.env.homologacao.admin apps/api/dist/db/cli.js knowledge-backfill
 ```
 
-O [Compose](../compose.homologacao.yaml) fixa PostgreSQL/pgvector e monta os pesos E5 somente para leitura. O serviço de embeddings opera offline e não deve ser exposto. Reutilizar o volume preserva o banco. Alterar `POSTGRES_PASSWORD` no arquivo não altera a senha de um banco já inicializado.
+O [Compose](../../../compose.homologacao.yaml) fixa PostgreSQL/pgvector e monta os pesos E5 somente para leitura. O serviço de embeddings opera offline e não deve ser exposto. Reutilizar o volume preserva o banco. Alterar `POSTGRES_PASSWORD` no arquivo não altera a senha de um banco já inicializado.
 
 Em terminais separados, a partir da raiz:
 

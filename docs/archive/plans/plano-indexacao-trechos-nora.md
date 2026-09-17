@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Indexação de trechos e integração com a Nora
 
 Status: planejamento baseado no código inspecionado em 15/09/2026. Não implementado nesta revisão.

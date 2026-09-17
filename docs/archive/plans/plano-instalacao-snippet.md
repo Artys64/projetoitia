@@ -1,6 +1,8 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Plano de instalação por snippet em página externa
 
-Data: 11/09/2026. Status: loader, widget e host externo implementados; validação local registrada em `docs/verificacao-snippet.md`. WebKit, HTTPS externo e Safari/iOS real ainda pendentes.
+Data: 11/09/2026. Status: loader, widget e host externo implementados; validação local registrada em `../verification/verificacao-snippet.md`. WebKit, HTTPS externo e Safari/iOS real ainda pendentes.
 
 Este documento detalha P0/P1 da seção 9 de `PLANO_IMPLEMENTACAO_SDD.md`.
 

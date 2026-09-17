@@ -32,7 +32,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     registerWidgetRoutes(app, store!)
     registerAdminRoutes(app, new AdminSessionStore(database), {
       production,
-      origin: options.adminOrigin ?? (process.env.ADMIN_ORIGIN?.trim() || undefined),
+      origin: options.adminOrigin ?? (process.env.ADMIN_ORIGIN?.trim() || (production ? undefined : 'http://localhost:4174')),
     })
   }
   registerEmbed(app, { ...options, ...(store ? { installationLookup: id => store.installation(id) } : {}) })

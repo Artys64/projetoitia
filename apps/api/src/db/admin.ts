@@ -4,6 +4,7 @@ import { validateArticles } from '../ia/knowledge/repository.js'
 import { Database } from './database.js'
 import { digest } from './store.js'
 import { randomBytes, randomUUID } from 'node:crypto'
+import { hashAdminPassword, normalizeAdminUsername } from './admin-password.js'
 export async function importInstallation(db:Database,installation:Installation,production=true) {
   if(!isPublicInstallation(installation,!production)||typeof installation.active!=='boolean') throw new Error('Instalação inválida; use origens HTTPS exatas em produção')
   await db.transaction(installation.companyId,async sql=>{
@@ -83,6 +84,24 @@ export async function queueKnowledgeBackfill(db: Database) {
   return queued
 }
 
+/** Provision a password account without exposing credentials in command output. */
+export async function createAdminAccount(db: Database, tenantId: string, username: string, password: string) {
+  const login = normalizeAdminUsername(username)
+  if (!/^[a-z0-9][a-z0-9._@+-]{2,119}$/.test(login)) throw new Error('Usuário inválido')
+  const passwordHash = await hashAdminPassword(password)
+  const userId = randomUUID()
+  await db.transaction(tenantId, async sql => {
+    if (!(await sql.query('SELECT id FROM tenants WHERE id=$1 AND active FOR UPDATE', [tenantId])).rowCount) {
+      throw new Error('Empresa não encontrada ou inativa')
+    }
+    await sql.query('INSERT INTO admin_users(id) VALUES($1)', [userId])
+    await sql.query('INSERT INTO admin_memberships(tenant_id,user_id) VALUES($1,$2)', [tenantId, userId])
+    await sql.query('INSERT INTO admin_credentials(username,user_id,tenant_id,password_hash) VALUES($1,$2,$3,$4)',
+      [login, userId, tenantId, passwordHash])
+  })
+  return { username: login, companyId: tenantId, userId }
+}
+
 /** Creates a revocable first-party admin session for a single tenant. */
 export async function issueAdminSession(db: Database, tenantId: string, days = 7) {
   if (!/^[a-zA-Z0-9_-]{1,80}$/.test(tenantId)) throw new Error('Empresa inválida')
@@ -118,6 +137,8 @@ export async function provisionRuntime(db:Database,password:string) {
   await db.pool.query('GRANT SELECT,INSERT,UPDATE ON ai_run_attempts TO support_hub_app')
   await db.pool.query('GRANT SELECT,DELETE ON articles,article_versions TO support_hub_app')
   await db.pool.query('GRANT SELECT ON admin_users,admin_memberships,admin_sessions TO support_hub_app')
+  await db.pool.query('GRANT SELECT ON admin_credentials TO support_hub_app')
+  await db.pool.query('GRANT INSERT ON admin_sessions TO support_hub_app')
   await db.pool.query('GRANT UPDATE(revoked_at) ON admin_sessions TO support_hub_app')
   await db.pool.query('GRANT SELECT,INSERT,UPDATE,DELETE ON article_drafts TO support_hub_app')
   await db.pool.query('GRANT INSERT ON articles,article_versions TO support_hub_app')

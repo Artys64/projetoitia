@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Mensagens e Nora persistentes
 
 Implementação local de HTTP + consulta periódica. Ainda exige homologação HTTPS e decisões operacionais antes do piloto. Não oferece atendimento humano, streaming, identidade entre dispositivos nem gestão administrativa pelo painel.

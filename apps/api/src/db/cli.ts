@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { Database } from './database.js'
 import { migrate } from './migrate.js'
-import { importArticles,importInstallation,issueAdminSession,provisionRuntime,queueKnowledgeBackfill } from './admin.js'
+import { createAdminAccount,importArticles,importInstallation,issueAdminSession,provisionRuntime,queueKnowledgeBackfill } from './admin.js'
 import { readTenantMetrics } from './metrics.js'
 const [command,path]=process.argv.slice(2)
 const url=process.env.MIGRATION_DATABASE_URL
@@ -18,6 +18,11 @@ try {
       console.info(JSON.stringify(await issueAdminSession(db,path)))
       break
     }
+    case 'admin-create': {
+      if (!path) throw new Error('Informe o ID da empresa')
+      console.info(JSON.stringify(await createAdminAccount(db, path, process.env.ADMIN_USERNAME ?? '', process.env.ADMIN_PASSWORD ?? '')))
+      break
+    }
     case 'metrics': {
       const tenants=(await db.pool.query('SELECT id FROM tenants')).rows
       for(const t of tenants) console.info(JSON.stringify(await db.transaction(t.id,async sql=>{
@@ -27,7 +32,7 @@ try {
     }
     case 'prune-rate-buckets': await db.pool.query('DELETE FROM session_rate_buckets WHERE expires_at<now()');break
     case 'knowledge-backfill': console.info(JSON.stringify({queued:await queueKnowledgeBackfill(db)}));break
-    default: throw new Error('Use: db migrate|provision|installation arquivo.json|articles arquivo.json|admin-session empresa|metrics|knowledge-backfill|prune-rate-buckets')
+    default: throw new Error('Use: db migrate|provision|installation arquivo.json|articles arquivo.json|admin-create empresa|admin-session empresa|metrics|knowledge-backfill|prune-rate-buckets')
   }
   console.info(JSON.stringify({event:'database_command_completed',command}))
 } catch {console.error(JSON.stringify({event:'database_command_failed',command}));process.exitCode=1}

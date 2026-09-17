@@ -94,6 +94,8 @@
 .notice.success { color: #155f4c; background: #e1f3ec; }
 .notice.error { color: #913939; background: #fde9e9; }
 .login-card .notice { margin: 14px 0 0; }
+.login-card input + label { margin-top: 18px; }
+.gate-back { display: block; margin-top: 20px; color: #aec4bf; text-align: center; }
 .editor-fields { min-height: 0; flex: 1; display: flex; flex-direction: column; padding: 24px 28px 16px; }
 .title-line { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .title-line label { color: #657871; font-size: .76rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }

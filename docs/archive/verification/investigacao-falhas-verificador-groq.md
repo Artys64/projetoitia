@@ -1,4 +1,6 @@
-S# Investigação de falhas do verificador da Nora na Groq
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
+# Investigação de falhas do verificador da Nora na Groq
 
 Data da investigação: 14 de setembro de 2026  
 Ambiente: homologação local  

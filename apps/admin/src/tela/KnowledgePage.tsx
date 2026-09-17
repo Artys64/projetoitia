@@ -35,7 +35,9 @@ function formatDate(value: string) {
 export function KnowledgePage() {
   const [session, setSession] = useState<AdminSession | null>(null)
   const [phase, setPhase] = useState<'loading' | 'login' | 'ready' | 'unavailable'>('loading')
-  const [token, setToken] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const hosted = window.location.pathname.startsWith('/admin')
   const [items, setItems] = useState<KnowledgeItem[]>([])
   const [form, setForm] = useState<Form>(emptyForm)
   const [dirty, setDirty] = useState(false)
@@ -43,6 +45,15 @@ export function KnowledgePage() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+
+  const clearSession = () => {
+    setSession(null)
+    setPhase('login')
+    setItems([])
+    setForm(emptyForm())
+    setDirty(false)
+    setPreview(false)
+  }
 
   const loadItems = async () => {
     const response = await adminApi.list()
@@ -82,9 +93,8 @@ export function KnowledgePage() {
     setNotice(null)
     try { await work() }
     catch (error) {
-      if (error instanceof AdminApiError && error.status === 401) {
-        setSession(null)
-        setPhase('login')
+      if (error instanceof AdminApiError && (error.status === 401 || error.code === 'admin_access_denied')) {
+        clearSession()
       }
       setNotice({ tone: 'error', text: error instanceof Error ? error.message : 'Não foi possível concluir a operação.' })
     } finally { setBusy(false) }
@@ -93,9 +103,9 @@ export function KnowledgePage() {
   const login = (event: React.FormEvent) => {
     event.preventDefault()
     void run(async () => {
-      const current = await adminApi.login(token)
+      const current = await adminApi.login(username, password)
       setSession(current)
-      setToken('')
+      setPassword('')
       setPhase('ready')
       const response = await adminApi.list()
       setItems(response.items)
@@ -204,11 +214,14 @@ export function KnowledgePage() {
         <div className="brand-mark">N</div>
         <span className="section-kicker">Administração</span>
         <h1>Acesse a base da Nora</h1>
-        <p>Use a chave de acesso emitida para a empresa. Ela fica protegida em uma sessão do navegador.</p>
-        <label htmlFor="access-token">Chave de acesso</label>
-        <input id="access-token" type="password" value={token} onChange={event => setToken(event.target.value)} autoComplete="off" required />
+        <p>Entre com seu usuário e senha para gerenciar o contexto da IA da sua empresa.</p>
+        <label htmlFor="admin-username">Usuário</label>
+        <input id="admin-username" name="username" value={username} onChange={event => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={120} required disabled={busy} />
+        <label htmlFor="admin-password">Senha</label>
+        <input id="admin-password" name="password" type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" maxLength={256} required disabled={busy} />
         {notice && <div className={`notice ${notice.tone}`} role="alert">{notice.text}</div>}
-        <button className="primary-button" disabled={busy || token.trim().length !== 43}>{busy ? 'Entrando…' : 'Entrar'}</button>
+        <button className="primary-button" disabled={busy || !username.trim() || !password}>{busy ? 'Entrando…' : 'Entrar'}</button>
+        {hosted && <a className="gate-back" href="/">Voltar ao site</a>}
       </form>
     </main>
   )
@@ -219,13 +232,13 @@ export function KnowledgePage() {
   return (
     <main className="knowledge-shell">
       <aside className="admin-sidebar">
-        <a className="admin-brand" href="/" aria-label="Nora Admin"><span className="brand-mark small">N</span><span>Nora <b>Admin</b></span></a>
+        <a className="admin-brand" href={hosted ? '/admin' : '/'} aria-label="Nora Admin"><span className="brand-mark small">N</span><span>Nora <b>Admin</b></span></a>
         <nav aria-label="Navegação principal">
-          <a className="nav-item active" href="/">
+          <a className="nav-item active" href={hosted ? '/admin' : '/'}>
             <Icon><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5zM4 5.5v16M8 7h8M8 11h8" /></Icon>
             Base de conhecimento
           </a>
-          <a className="nav-item" href="/chatbot">
+          <a className="nav-item" href={hosted ? '/' : '/chatbot'}>
             <Icon><path d="M4 5h16v12H8l-4 4zM8 9h8M8 13h5" /></Icon>
             Testar Nora
           </a>
@@ -233,7 +246,9 @@ export function KnowledgePage() {
         <div className="sidebar-foot">
           <span>Empresa ativa</span>
           <strong>{session?.companyId}</strong>
-          <button onClick={() => void run(async () => { await adminApi.logout(); setPhase('login'); setSession(null) })}>Sair</button>
+          <button disabled={busy} onClick={() => void run(async () => {
+            await adminApi.logout(); clearSession()
+          })}>Sair</button>
         </div>
       </aside>
 

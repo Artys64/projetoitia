@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Base de conhecimento: importação e gestão pelo painel
 
 Data: 15/09/2026. Status: proposta; implementação não iniciada nesta revisão.

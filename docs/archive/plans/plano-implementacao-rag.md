@@ -1,3 +1,5 @@
+> **Arquivo histórico.** Este documento registra uma revisão anterior e pode não representar o código atual. Consulte [a documentação vigente](../../index.md).
+
 # Plano de implementação do RAG da Nora
 
 Data: 15/09/2026. Status: proposta de implementação baseada no código local inspecionado nesta data.
@@ -30,11 +32,11 @@ O primeiro marco é um RAG operacional via importação administrativa e widget 
 | Auditoria | Tentativas, referências recuperadas, modelo, prompt, duração e uso | Métricas específicas da recuperação e avaliação reproduzível |
 | Avaliação | Corpus de 40 casos, 24 de desenvolvimento e 16 reservados; avaliador legado de três perguntas | Adaptar avaliador para o fluxo atual e executar revisão humana |
 
-Referências de código: [busca](../apps/api/src/ia/knowledge/search.ts), [consulta ao banco](../apps/api/src/db/knowledge.ts), [contexto](../apps/api/src/ia/knowledge/context.ts), [agente](../apps/api/src/ia/agents/nora.ts), [geração compartilhada](../apps/api/src/ia/generated-response.ts), [worker](../apps/api/src/db/worker.ts) e [importação](../apps/api/src/db/admin.ts).
+Referências de código: [busca](../../../apps/api/src/ia/knowledge/search.ts), [consulta ao banco](../../../apps/api/src/db/knowledge.ts), [contexto](../../../apps/api/src/ia/knowledge/context.ts), [agente](../../../apps/api/src/ia/agents/nora.ts), [geração compartilhada](../../../apps/api/src/ia/generated-response.ts), [worker](../../../apps/api/src/db/worker.ts) e [importação](../../../apps/api/src/db/admin.ts).
 
 O working tree contém alterações não commitadas e mudou desde o diagnóstico anterior. Os erros de testes relatados naquela inspeção não devem ser tratados como falhas atuais sem nova execução. Este plano não executou novamente as suítes.
 
-O [plano de qualidade anterior](plano-qualidade-respostas-nora.md) e o [registro do corpus](avaliacao-qualidade-nora.md) descrevem também uma implementação com verificador separado, ausente do fluxo atual. Preservar esses resultados como históricos e indicar sua versão. A [investigação da Groq](investigacao-falhas-verificador-groq.md) registra chamadas reais com HTTP 400 e parecer inconsistente; isso não equivale à avaliação semântica completa do corpus.
+O [plano de qualidade anterior](plano-qualidade-respostas-nora.md) e o [registro do corpus](../verification/avaliacao-qualidade-nora.md) descrevem também uma implementação com verificador separado, ausente do fluxo atual. Preservar esses resultados como históricos e indicar sua versão. A [investigação da Groq](../verification/investigacao-falhas-verificador-groq.md) registra chamadas reais com HTTP 400 e parecer inconsistente; isso não equivale à avaliação semântica completa do corpus.
 
 ## 3. Arquitetura pretendida
 
