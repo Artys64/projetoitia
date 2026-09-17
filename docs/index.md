@@ -46,6 +46,7 @@ representar o código atual.
 - [Contratos do chat](reference/contratos-do-chat.md).
 - [Roadmap](project/roadmap.md).
 - [Decisões de arquitetura](project/decisoes/README.md).
+- [Plano do painel independente e multiempresa](plano-implementacao-painel-independente.md).
 
 ## Histórico
 
